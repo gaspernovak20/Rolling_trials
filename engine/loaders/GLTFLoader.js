@@ -194,7 +194,10 @@ export class GLTFLoader {
     loadMaterial(nameOrIndex) {
         const gltfSpec = this.findByNameOrIndex(this.gltf.materials, nameOrIndex);
         if (!gltfSpec) {
-            return null;
+            // return null;
+            return new Material({
+                baseFactor: [1, 0, , 1], // fallback bela
+            });
         }
         if (this.cache.has(gltfSpec)) {
             return this.cache.get(gltfSpec);
@@ -211,9 +214,13 @@ export class GLTFLoader {
                 options.metalnessTexture = this.loadTexture(pbr.metallicRoughnessTexture.index);
                 options.roughnessTexture = this.loadTexture(pbr.metallicRoughnessTexture.index);
             }
-            options.baseFactor = pbr.baseColorFactor;
+            options.baseFactor = pbr.baseColorFactor ?? [1,1,1,1];
             options.metalnessFactor = pbr.metallicFactor;
             options.roughnessFactor = pbr.roughnessFactor;
+            options.useTexture = 1;
+        }else{
+            options.baseFactor = [1,1,1,1];
+            options.useTexture = 0;
         }
 
         if (gltfSpec.normalTexture) {

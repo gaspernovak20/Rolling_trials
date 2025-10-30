@@ -12,7 +12,6 @@ import {
     mergeAxisAlignedBoundingBoxes,
 } from 'engine/core/MeshUtils.js';
 
-import { Physics } from './Physics.js';
 
 const canvas = document.querySelector('canvas');
 const renderer = new UnlitRenderer(canvas);

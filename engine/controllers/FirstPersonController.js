@@ -12,6 +12,10 @@ export class FirstPersonController {
         maxSpeed = 5,
         decay = 0.99999,
         pointerSensitivity = 0.002,
+        jumpSpeed = 10,
+        gravity = -30,
+        groundY = 1.5,
+        isGrounded = true,
     } = {}) {
         this.node = node;
         this.domElement = domElement;
@@ -26,6 +30,11 @@ export class FirstPersonController {
         this.maxSpeed = maxSpeed;
         this.decay = decay;
         this.pointerSensitivity = pointerSensitivity;
+
+        this.jumpSpeed = jumpSpeed;
+        this.gravity = gravity;
+        this.groundY = groundY;
+        this.isGrounded = isGrounded;
 
         this.initHandlers();
     }
@@ -58,6 +67,7 @@ export class FirstPersonController {
         const forward = [-sin, 0, -cos];
         const right = [cos, 0, -sin];
 
+
         // Map user input to the acceleration vector.
         const acc = vec3.create();
         if (this.keys['KeyW']) {
@@ -72,6 +82,14 @@ export class FirstPersonController {
         if (this.keys['KeyA']) {
             vec3.sub(acc, acc, right);
         }
+        if (this.keys['Space']) {
+            if (this.isGrounded) {
+                this.velocity[1] = this.jumpSpeed;
+                this.isGrounded = false;
+            }
+        }
+
+        this.velocity[1] += dt * this.gravity;
 
         // Update velocity based on acceleration.
         vec3.scaleAndAdd(this.velocity, this.velocity, acc, dt * this.acceleration);
@@ -80,23 +98,35 @@ export class FirstPersonController {
         if (!this.keys['KeyW'] &&
             !this.keys['KeyS'] &&
             !this.keys['KeyD'] &&
-            !this.keys['KeyA'])
-        {
+            !this.keys['KeyA'] &&
+            !this.keys['Space']) {
             const decay = Math.exp(dt * Math.log(1 - this.decay));
             vec3.scale(this.velocity, this.velocity, decay);
         }
 
         // Limit speed to prevent accelerating to infinity and beyond.
-        const speed = vec3.length(this.velocity);
-        if (speed > this.maxSpeed) {
-            vec3.scale(this.velocity, this.velocity, this.maxSpeed / speed);
+        const horizontalSpeed = Math.hypot(this.velocity[0], this.velocity[2]);
+        if (horizontalSpeed > this.maxSpeed) {
+            const scale = this.maxSpeed / horizontalSpeed;
+            this.velocity[0] *= scale;
+            this.velocity[2] *= scale;
         }
+        // const speed = vec3.length(this.velocity);
+        // if (speed > this.maxSpeed) {
+        //     vec3.scale(this.velocity, this.velocity, this.maxSpeed / speed);
+        // }
 
         const transform = this.node.getComponentOfType(Transform);
         if (transform) {
             // Update translation based on velocity.
             vec3.scaleAndAdd(transform.translation,
                 transform.translation, this.velocity, dt);
+
+            if (transform.translation[1] <= this.groundY && this.velocity[1] < 0) {
+                transform.translation[1] = this.groundY;
+                this.isGrounded = true;
+                this.velocity[1] = 0;
+            }
 
             // Update rotation based on the Euler angles.
             const rotation = quat.create();
@@ -111,7 +141,7 @@ export class FirstPersonController {
         const dy = e.movementY;
 
         this.pitch -= dy * this.pointerSensitivity;
-        this.yaw   -= dx * this.pointerSensitivity;
+        this.yaw -= dx * this.pointerSensitivity;
 
         const twopi = Math.PI * 2;
         const halfpi = Math.PI / 2;

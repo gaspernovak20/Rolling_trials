@@ -1,19 +1,20 @@
-import { mat4 } from 'glm';
+import { mat4, vec3 } from 'glm';
 
 import * as WebGPU from '../WebGPU.js';
 
-import { Camera, Model } from '../core.js';
+import { Camera, Light, Model } from '../core.js';
 
 import {
     getLocalModelMatrix,
     getGlobalViewMatrix,
     getProjectionMatrix,
+    getGlobalModelMatrix,
 } from '../core/SceneUtils.js';
 
 import { BaseRenderer } from './BaseRenderer.js';
 
 const vertexBufferLayout = {
-    arrayStride: 20,
+    arrayStride: 32,
     attributes: [
         {
             name: 'position',
@@ -27,6 +28,12 @@ const vertexBufferLayout = {
             offset: 12,
             format: 'float32x2',
         },
+        {
+            name: 'normal',
+            shaderLocation: 2,
+            offset: 20,
+            format: 'float32x2'
+        }
     ],
 };
 
@@ -47,7 +54,7 @@ export class UnlitRenderer extends BaseRenderer {
             layout: 'auto',
             vertex: {
                 module,
-                buffers: [ vertexBufferLayout ],
+                buffers: [vertexBufferLayout],
             },
             fragment: {
                 module,
@@ -129,29 +136,124 @@ export class UnlitRenderer extends BaseRenderer {
         return gpuObjects;
     }
 
+    // prepareMaterial(material) {
+    //     if (this.gpuObjects.has(material)) {
+    //         return this.gpuObjects.get(material);
+    //     }
+
+    //     if (material.baseTexture) {
+    //     const baseTexture = this.prepareTexture(material.baseTexture);
+    //     }
+
+    //     const materialUniformBuffer = this.device.createBuffer({
+    //         size: 16,
+    //         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    //     });
+
+    //     const materialBindGroup = this.device.createBindGroup({
+    //         layout: this.pipeline.getBindGroupLayout(2),
+    //         entries: [
+    //             { binding: 0, resource: { buffer: materialUniformBuffer } },
+    //             { binding: 1, resource: baseTexture.gpuTexture.createView() },
+    //             { binding: 2, resource: baseTexture.gpuSampler },
+    //         ],
+    //     });
+
+    //     const gpuObjects = { materialUniformBuffer, materialBindGroup };
+    //     this.gpuObjects.set(material, gpuObjects);
+    //     return gpuObjects;
+    // }
     prepareMaterial(material) {
         if (this.gpuObjects.has(material)) {
             return this.gpuObjects.get(material);
         }
 
-        const baseTexture = this.prepareTexture(material.baseTexture);
+        let baseTextureGPU;
+        let baseSamplerGPU;
 
+        // Če ni teksture, ustvarimo 1x1 belo dummy teksturo
+        if (material.baseTexture) {
+            const baseTexture = this.prepareTexture(material.baseTexture);
+            baseTextureGPU = baseTexture.gpuTexture.createView();
+            baseSamplerGPU = baseTexture.gpuSampler;
+        } else {
+            const dummy = this.createDummyTexture();
+            baseTextureGPU = dummy.texture.createView();
+            baseSamplerGPU = dummy.sampler;
+        }
+
+        // Uniform buffer – vsaj 48 bajtov, da ustreza minBindingSize
         const materialUniformBuffer = this.device.createBuffer({
-            size: 16,
+            size: 48,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
+        // Zapišemo baseFactor in useTexture v uniform buffer
+        // Uporabimo Float32Array (vec4) + UInt32Array (useTexture)
+        const uniformData = new ArrayBuffer(48); // padding do 48
+        const floatView = new Float32Array(uniformData, 0, 4); // baseFactor
+        const uintView = new Uint32Array(uniformData, 16, 1);  // useTexture
+
+        floatView.set(material.baseFactor ?? [1, 1, 1, 1]);  // če ni baseFactor, uporabimo bela barva
+        uintView[0] = material.baseTexture ? 1 : 0;
+
+        this.device.queue.writeBuffer(materialUniformBuffer, 0, uniformData);
+
+        // Bind group vedno vsebuje 3 bindinge (uniform + texture + sampler)
         const materialBindGroup = this.device.createBindGroup({
             layout: this.pipeline.getBindGroupLayout(2),
             entries: [
                 { binding: 0, resource: { buffer: materialUniformBuffer } },
-                { binding: 1, resource: baseTexture.gpuTexture.createView() },
-                { binding: 2, resource: baseTexture.gpuSampler },
+                { binding: 1, resource: baseTextureGPU },
+                { binding: 2, resource: baseSamplerGPU },
             ],
         });
 
         const gpuObjects = { materialUniformBuffer, materialBindGroup };
         this.gpuObjects.set(material, gpuObjects);
+        return gpuObjects;
+    }
+
+    // Dummy texture helper
+    createDummyTexture() {
+        const texture = this.device.createTexture({
+            size: [1, 1, 1],
+            format: "rgba8unorm",
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+        });
+
+        const whitePixel = new Uint8Array([255, 255, 255, 255]);
+        this.device.queue.writeTexture(
+            { texture },
+            whitePixel,
+            { bytesPerRow: 4 },
+            { width: 1, height: 1, depthOrArrayLayers: 1 }
+        );
+
+        const sampler = this.device.createSampler({});
+        return { texture, sampler };
+    }
+
+
+    prepareLight(light) {
+        if (this.gpuObjects.has(light)) {
+            return this.gpuObjects.get(light);
+        }
+
+        const lightUniformBuffer = this.device.createBuffer({
+            size: 48,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        const lightBindGroup = this.device.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(3),
+            entries: [
+                { binding: 0, resource: { buffer: lightUniformBuffer } },
+            ],
+        });
+
+        const gpuObjects = { lightUniformBuffer, lightBindGroup };
+        this.gpuObjects.set(light, gpuObjects);
         return gpuObjects;
     }
 
@@ -186,6 +288,19 @@ export class UnlitRenderer extends BaseRenderer {
         this.device.queue.writeBuffer(cameraUniformBuffer, 0, viewMatrix);
         this.device.queue.writeBuffer(cameraUniformBuffer, 64, projectionMatrix);
         this.renderPass.setBindGroup(0, cameraBindGroup);
+
+        const light = scene.find(node => node.getComponentOfType(Light));
+        const lightComponent = light.getComponentOfType(Light);
+        const lightPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(light));
+        const { lightUniformBuffer, lightBindGroup } = this.prepareLight(lightComponent);
+
+        this.device.queue.writeBuffer(lightUniformBuffer, 0, new Float32Array([
+            ...lightPosition, 0,
+            ...lightComponent.color, 0,
+            ...lightComponent.ambient, 0,
+        ]));
+
+        this.renderPass.setBindGroup(3, lightBindGroup);
 
         this.renderNode(scene);
 

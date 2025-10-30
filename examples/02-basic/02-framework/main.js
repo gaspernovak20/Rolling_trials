@@ -1,12 +1,8 @@
 import { quat } from 'glm';
-
 import { Camera } from 'engine/core.js';
-
 import { GLTFLoader } from 'engine/loaders/GLTFLoader.js';
-
 import { ResizeSystem } from 'engine/systems/ResizeSystem.js';
 import { UpdateSystem } from 'engine/systems/UpdateSystem.js';
-
 import { UnlitRenderer } from 'engine/renderers/UnlitRenderer.js';
 
 const gltfLoader = new GLTFLoader();

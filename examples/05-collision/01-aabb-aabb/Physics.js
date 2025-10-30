@@ -104,4 +104,24 @@ export class Physics {
         vec3.add(transform.translation, transform.translation, minDirection);
     }
 
+    xzIntersection(x, z, aabb) {
+        return this.intervalIntersection(aabb.min[0], aabb.max[0], x, x)
+            && this.intervalIntersection(aabb.min[2], aabb.max[2], z, z);
+    }
+
+    getGroundHeightAt(x, z) {
+        let groundY = -Infinity;
+        this.scene.traverse(node => {
+            if (node.isStatic) {
+                const nodeBox = this.getTransformedAABB(node);
+                // Check on which Node is player standing
+                if (this.xzIntersection(x, z, nodeBox)) {
+                    // Return Floor hight
+                    groundY = Math.max(groundY, nodeBox.max[1]);
+                }
+            }
+        });
+        return groundY === -Infinity ? null : groundY;
+    }
+
 }
