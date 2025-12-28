@@ -19,7 +19,9 @@ const renderer = new UnlitRenderer(canvas);
 await renderer.initialize();
 
 const gltfLoader = new GLTFLoader();
-await gltfLoader.load(new URL('./models/scene/scene.gltf', import.meta.url));
+await gltfLoader.load(new URL('./level4/level4.gltf', import.meta.url));
+// await gltfLoader.load(new URL('./models/scene/scene.gltf', import.meta.url));
+
 
 const scene = gltfLoader.loadScene(gltfLoader.defaultScene);
 if (!scene) {
@@ -55,26 +57,24 @@ await playerLoader.load(new URL('./models/soccer_ball/scene.gltf', import.meta.u
 
 const playerNode = playerLoader.loadNode('defaultMaterial');
 playerNode.isDynamic = true;
+
 playerNode.addComponent(new Transform({
     translation: [0, 0, 0],
-    scale: [0.5, 0.5, 0.5],
+    scale: [2, 2, 2],
 }))
+
 playerNode.addComponent(new ThirdPersonController(playerNode, camera, canvas, physics));
 scene.addChild(playerNode);
 
-gltfLoader.loadNode('Box.000').isStatic = true;
-gltfLoader.loadNode('Box.001').isStatic = true;
-gltfLoader.loadNode('Box.002').isStatic = true;
-gltfLoader.loadNode('Box.003').isStatic = true;
-gltfLoader.loadNode('Box.004').isStatic = true;
-gltfLoader.loadNode('Box.005').isStatic = true;
-gltfLoader.loadNode('Wall.000').isStatic = true;
-gltfLoader.loadNode('Wall.001').isStatic = true;
-gltfLoader.loadNode('Wall.002').isStatic = true;
-gltfLoader.loadNode('Wall.003').isStatic = true;
-gltfLoader.loadNode('Floor').isStatic = true;
+scene.traverse(node => {
+    if (node.getComponentOfType(Model) && !node.isDynamic) {
+        node.isStatic = true;
+    }
+});
 
-// Adding light into scene
+camera.isDynamic = true;
+
+// Adding light into scene  
 const light = new Node();
 scene.addChild(light);
 light.addComponent(new Transform({
@@ -97,7 +97,7 @@ scene.traverse(node => {
 
 const { min, max } = physics.getTransformedAABB(playerNode);
 const radius = (max[1] - min[1]) / 2;
-playerNode.radius = radius; 
+playerNode.radius = radius;
 console.log(playerNode.radius);
 
 function update(time, dt) {

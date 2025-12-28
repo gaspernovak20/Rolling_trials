@@ -9,17 +9,17 @@ export class ThirdPersonController {
         pitch = 0,
         yaw = 0,
         velocity = [0, 0, 0],
-        acceleration = 50,
-        maxSpeed = 5,
+        acceleration = 100,
+        maxSpeed = 50,
         decay = 0.99999,
         pointerSensitivity = 0.002,
 
-        jumpSpeed = 20,
-        gravity = -20,
+        jumpSpeed = 70,
+        gravity = -100,
         groundY = 0.5,
         isGrounded = true,
 
-        baseOffset = [0, 2, 5],
+        baseOffset = [0, 25, 30],
         radius = vec3.len(baseOffset),
     } = {}) {
         this.playerNode = playerNode;
@@ -163,14 +163,11 @@ export class ThirdPersonController {
                 }
             }
 
-
-
             // Update rotation based on the Euler angles.
             const yawRotation = quat.create();
             quat.rotateY(yawRotation, yawRotation, this.yaw);
             transformPlayer.rotation = yawRotation;
             quat.clone(transformPlayer.rotation, yawRotation);
-
 
             // const delta = vec3.sub(vec3.create(), playerPosition, previousPosition);
 
@@ -206,7 +203,7 @@ export class ThirdPersonController {
             // }
 
         }
-        
+
         if (transformCamera) {
             // camera translation around Player
             vec3.add(cameraPosition, playerPosition, offset);

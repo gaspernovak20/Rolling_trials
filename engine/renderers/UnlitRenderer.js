@@ -14,7 +14,7 @@ import {
 import { BaseRenderer } from './BaseRenderer.js';
 
 const vertexBufferLayout = {
-    arrayStride: 32,
+    arrayStride: 36,
     attributes: [
         {
             name: 'position',
@@ -32,7 +32,7 @@ const vertexBufferLayout = {
             name: 'normal',
             shaderLocation: 2,
             offset: 20,
-            format: 'float32x2'
+            format: 'float32x3'
         }
     ],
 };
@@ -136,76 +136,46 @@ export class UnlitRenderer extends BaseRenderer {
         return gpuObjects;
     }
 
-    // prepareMaterial(material) {
-    //     if (this.gpuObjects.has(material)) {
-    //         return this.gpuObjects.get(material);
-    //     }
-
-    //     if (material.baseTexture) {
-    //     const baseTexture = this.prepareTexture(material.baseTexture);
-    //     }
-
-    //     const materialUniformBuffer = this.device.createBuffer({
-    //         size: 16,
-    //         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    //     });
-
-    //     const materialBindGroup = this.device.createBindGroup({
-    //         layout: this.pipeline.getBindGroupLayout(2),
-    //         entries: [
-    //             { binding: 0, resource: { buffer: materialUniformBuffer } },
-    //             { binding: 1, resource: baseTexture.gpuTexture.createView() },
-    //             { binding: 2, resource: baseTexture.gpuSampler },
-    //         ],
-    //     });
-
-    //     const gpuObjects = { materialUniformBuffer, materialBindGroup };
-    //     this.gpuObjects.set(material, gpuObjects);
-    //     return gpuObjects;
-    // }
     prepareMaterial(material) {
+
+        if (!material) {
+            material = this.getDefaultMaterial();
+        }
+
         if (this.gpuObjects.has(material)) {
             return this.gpuObjects.get(material);
         }
 
-        let baseTextureGPU;
-        let baseSamplerGPU;
+        let textureView, sampler;
 
-        // Če ni teksture, ustvarimo 1x1 belo dummy teksturo
         if (material.baseTexture) {
-            const baseTexture = this.prepareTexture(material.baseTexture);
-            baseTextureGPU = baseTexture.gpuTexture.createView();
-            baseSamplerGPU = baseTexture.gpuSampler;
+            const tex = this.prepareTexture(material.baseTexture);
+            textureView = tex.gpuTexture.createView();
+            sampler = tex.gpuSampler;
         } else {
             const dummy = this.createDummyTexture();
-            baseTextureGPU = dummy.texture.createView();
-            baseSamplerGPU = dummy.sampler;
+            textureView = dummy.texture.createView();
+            sampler = dummy.sampler;
         }
 
-        // Uniform buffer – vsaj 48 bajtov, da ustreza minBindingSize
         const materialUniformBuffer = this.device.createBuffer({
-            size: 48,
+            size: 16,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        // Zapišemo baseFactor in useTexture v uniform buffer
-        // Uporabimo Float32Array (vec4) + UInt32Array (useTexture)
-        const uniformData = new ArrayBuffer(48); // padding do 48
-        const floatView = new Float32Array(uniformData, 0, 4); // baseFactor
-        const uintView = new Uint32Array(uniformData, 16, 1);  // useTexture
+        const baseFactor = material.baseFactor ?? [1, 1, 1, 1];
+        this.device.queue.writeBuffer(
+            materialUniformBuffer,
+            0,
+            new Float32Array(baseFactor)
+        );
 
-        floatView.set(material.baseFactor ?? [1, 1, 1, 1]);  // če ni baseFactor, uporabimo bela barva
-        uintView[0] = material.baseTexture ? 1 : 0;
-
-        this.device.queue.writeBuffer(materialUniformBuffer, 0, uniformData);
-
-        // Bind group vedno vsebuje 3 bindinge (uniform + texture + sampler)
         const materialBindGroup = this.device.createBindGroup({
             layout: this.pipeline.getBindGroupLayout(2),
             entries: [
                 { binding: 0, resource: { buffer: materialUniformBuffer } },
-                { binding: 1, resource: baseTextureGPU },
-                { binding: 2, resource: baseSamplerGPU },
+                { binding: 1, resource: textureView },
+                { binding: 2, resource: sampler },
             ],
         });
 
@@ -334,8 +304,8 @@ export class UnlitRenderer extends BaseRenderer {
     }
 
     renderPrimitive(primitive) {
-        const { materialUniformBuffer, materialBindGroup } = this.prepareMaterial(primitive.material);
-        this.device.queue.writeBuffer(materialUniformBuffer, 0, new Float32Array(primitive.material.baseFactor));
+        const material = primitive.material ?? this.getDefaultMaterial();
+        const { materialUniformBuffer, materialBindGroup } = this.prepareMaterial(material);
         this.renderPass.setBindGroup(2, materialBindGroup);
 
         const { vertexBuffer, indexBuffer } = this.prepareMesh(primitive.mesh, vertexBufferLayout);
@@ -344,5 +314,16 @@ export class UnlitRenderer extends BaseRenderer {
 
         this.renderPass.drawIndexed(primitive.mesh.indices.length);
     }
+
+    getDefaultMaterial() {
+        if (!this._defaultMaterial) {
+            this._defaultMaterial = {
+                baseFactor: [1, 1, 1, 1],
+                baseTexture: null,
+            };
+        }
+        return this._defaultMaterial;
+    }
+
 
 }

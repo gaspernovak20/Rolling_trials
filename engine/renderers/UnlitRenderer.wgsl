@@ -28,13 +28,11 @@ struct CameraUniforms {
 
 struct ModelUniforms {
     modelMatrix: mat4x4f,
-    normalMatrix: mat3x3f,
+    normalMatrix: mat4x4f,
 }
 
 struct MaterialUniforms {
     baseFactor: vec4f,
-    useTexture: u32,    // 0 = brez teksture, 1 = uporabi teksturo
-    _padding: vec3<u32>, // poravnava na 16 bajtov
 }
 
 struct LightUniforms {
@@ -61,7 +59,7 @@ fn vertex(input: VertexInput) -> VertexOutput {
     output.clipPosition = camera.projectionMatrix * camera.viewMatrix * model.modelMatrix * vec4(input.position, 1);
     output.position = (model.modelMatrix * vec4(input.position, 1)).xyz;
     output.texcoords = input.texcoords;
-    output.normal = model.normalMatrix * input.normal;
+    output.normal = (model.normalMatrix * vec4(input.normal, 0.0)).xyz;
 
     return output;
 }
@@ -74,12 +72,10 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
     let L = normalize(light.position - input.position);
     let lambert = max(0, dot(N,L));
 
-    if(material.useTexture == 1u){
-        let materialColor = textureSample(baseTexture, baseSampler, input.texcoords) * material.baseFactor;
-        output.color = materialColor * vec4f(light.color * lambert + light.ambient, 1);
-    }else{
-        output.color = material.baseFactor * vec4f(light.color * lambert + light.ambient, 1);
-    }
+    let texColor = textureSample(baseTexture, baseSampler, input.texcoords);
+    let baseColor = texColor * material.baseFactor;
+
+    output.color = baseColor * vec4f(light.color * lambert + light.ambient, 1.0);
 
     return output;
 }
