@@ -13,6 +13,10 @@ import {
 } from 'engine/core/MeshUtils.js';
 import { Primitive } from './engine/core.js';
 
+import { KeyOverlay } from './keys.js';
+
+
+
 
 const canvas = document.querySelector('canvas');
 const renderer = new UnlitRenderer(canvas);
@@ -21,6 +25,8 @@ await renderer.initialize();
 const gltfLoader = new GLTFLoader();
 await gltfLoader.load(new URL('./level4/level4.gltf', import.meta.url));
 // await gltfLoader.load(new URL('./models/scene/scene.gltf', import.meta.url));
+
+const keyOverlay = new KeyOverlay(document.body);
 
 
 const scene = gltfLoader.loadScene(gltfLoader.defaultScene);
@@ -119,3 +125,4 @@ function resize({ displaySize: { width, height } }) {
 
 new ResizeSystem({ canvas, resize }).start();
 new UpdateSystem({ update, render }).start();
+
