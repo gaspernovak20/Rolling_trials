@@ -156,6 +156,13 @@ export class ThirdPersonController {
             this.velocity[0] *= decay;
             this.velocity[2] *= decay;
         }
+
+        const topSpees = this.abilityManager?.topSpeedMult ?? 1;
+        if(this.abilityManager.activeAbility == "2x Top speed") {
+            this.increaseSpeed(topSpees)
+        } else {
+            this.maxSpeed = 50;
+        }
         
 
         // Limit speed to prevent accelerating to infinity and beyond.
@@ -294,6 +301,10 @@ export class ThirdPersonController {
 
     resetDistanceTraveled() {
         this.distanceTraveled = 0;
+    }
+
+    increaseSpeed(topSpees) {
+        this.maxSpeed = topSpees;
     }
 
 }
