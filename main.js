@@ -13,6 +13,9 @@ import {
 } from 'engine/core/MeshUtils.js';
 import { Primitive } from './engine/core.js';
 
+import { KeyOverlay } from './keys.js';
+import { AbilityManager } from './AbilityManager.js';
+
 
 const canvas = document.querySelector('canvas');
 const renderer = new UnlitRenderer(canvas);
@@ -22,6 +25,8 @@ const gltfLoader = new GLTFLoader();
 await gltfLoader.load(new URL('./level4/level4.gltf', import.meta.url));
 // await gltfLoader.load(new URL('./models/scene/scene.gltf', import.meta.url));
 
+const abilityManager = new AbilityManager();
+const keyOverlay = new KeyOverlay(document.body, abilityManager);
 
 const scene = gltfLoader.loadScene(gltfLoader.defaultScene);
 if (!scene) {
@@ -36,8 +41,8 @@ if (camera) {
     camera.addComponent(new FirstPersonController(camera, canvas));
     camera.isDynamic = true;
     camera.aabb = {
-        min: [-0.2, -0.2, -0.2],
-        max: [0.2, 0.2, 0.2],
+        min: [-0.3, -0.3, -0.3],
+        max: [0.3, 0.3, 0.3],
     };
 } {
     // Ustvari ročno kamero
@@ -63,8 +68,10 @@ playerNode.addComponent(new Transform({
     scale: [2, 2, 2],
 }))
 
-playerNode.addComponent(new ThirdPersonController(playerNode, camera, canvas, physics));
+playerNode.addComponent(new ThirdPersonController(playerNode, camera, canvas, physics, 3, abilityManager));
 scene.addChild(playerNode);
+
+
 
 scene.traverse(node => {
     if (node.getComponentOfType(Model) && !node.isDynamic) {
@@ -72,9 +79,10 @@ scene.traverse(node => {
     }
 });
 
+
+
 camera.isDynamic = true;
 
-// Adding light into scene  
 const light = new Node();
 scene.addChild(light);
 light.addComponent(new Transform({
@@ -84,9 +92,19 @@ light.addComponent(new Light({
     ambient: [0.3, 0.3, 0.3],
 }));
 
+
+
+
+const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077', 'Cube.076']; //popravljeno igrnorira piramide
+
+
 // Generate aabb box for all nodes
 scene.traverse(node => {
     const model = node.getComponentOfType(Model);
+    if(ignoreNodes.includes(node.name)){
+        node.isStatic = false;
+    }
+
     if (!model) {
         return;
     }
@@ -119,3 +137,4 @@ function resize({ displaySize: { width, height } }) {
 
 new ResizeSystem({ canvas, resize }).start();
 new UpdateSystem({ update, render }).start();
+

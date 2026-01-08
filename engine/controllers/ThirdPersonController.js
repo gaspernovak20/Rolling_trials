@@ -3,9 +3,16 @@ import { quat, vec3, mat4, mat3 } from 'glm';
 import { Transform } from '../core/Transform.js';
 // import { of } from 'core-js/core/array';
 
+
+
+const jumpSound = new Audio(new URL('../../sounds/jump.wav', import.meta.url)); //zvok ko skoci
+jumpSound.volume = 0.8;
+const bounceSound = new Audio(new URL('../../sounds/bounce.wav', import.meta.url));
+bounceSound.volume = 0.8;
+
 export class ThirdPersonController {
 
-    constructor(playerNode, cameraNode, domElement, physics, playerRadius, {
+    constructor(playerNode, cameraNode, domElement, physics, playerRadius, abilityManager, {
         pitch = 0,
         yaw = 0,
         velocity = [0, 0, 0],
@@ -22,10 +29,12 @@ export class ThirdPersonController {
         baseOffset = [0, 25, 30],
         radius = vec3.len(baseOffset),
     } = {}) {
+        console.log('AbilityManager in controller:', abilityManager);
         this.playerNode = playerNode;
         this.cameraNode = cameraNode;
         this.domElement = domElement;
         this.physics = physics;
+        this.abilityManager = abilityManager;
 
         this.keys = {};
 
@@ -118,15 +127,25 @@ export class ThirdPersonController {
         }
         if (this.keys['Space']) {
             if (this.isGrounded) {
-                this.velocity[1] = this.jumpSpeed;
+                const jumpMult = this.abilityManager?.jumpMult ?? 1;
+                this.velocity[1] = this.jumpSpeed * jumpMult;
                 this.isGrounded = false;
+                jumpSound.currentTime = 0; // resetiraj
+                jumpSound.play();
             }
         }
 
-        this.velocity[1] += dt * this.gravity;
+        const gravityMult = this.abilityManager?.gravityMult ?? 1;
+        this.velocity[1] += dt * this.gravity * gravityMult;
 
         // Update velocity based on acceleration.
-        vec3.scaleAndAdd(this.velocity, this.velocity, acc, dt * this.acceleration);
+        const accMult = this.abilityManager?.accelerationMult ?? 1;
+        vec3.scaleAndAdd(
+            this.velocity,
+            this.velocity,
+            acc,
+            dt * this.acceleration * accMult
+        );
 
         // If there is no user input, apply decay.
         if (!this.keys['KeyW'] &&
@@ -137,6 +156,7 @@ export class ThirdPersonController {
             this.velocity[0] *= decay;
             this.velocity[2] *= decay;
         }
+        
 
         // Limit speed to prevent accelerating to infinity and beyond.
         let horizontalSpeed = Math.hypot(this.velocity[0], this.velocity[2]);
@@ -157,11 +177,24 @@ export class ThirdPersonController {
                 if (playerPosition[1] - this.playerNode.radius <= this.groundY + epsilon) {
                     playerPosition[1] = this.groundY + this.playerNode.radius;
                     this.isGrounded = true;
+                    
+                    // zvok pristanka: samo, če prej ni bil grounded
+                    if (!this.wasGrounded) {
+                        try {
+                            bounceSound.currentTime = 0; // reset, da se lahko predvaja večkrat
+                            bounceSound.play();
+                        } catch (err) {
+                            console.warn('Bounce sound could not play:', err);
+                        }
+                    }
+
                     this.velocity[1] = 0;
                 } else {
                     this.isGrounded = false
                 }
             }
+
+            this.wasGrounded = this.isGrounded;
 
             // Update rotation based on the Euler angles.
             const yawRotation = quat.create();

@@ -450,7 +450,7 @@ export class GLTFLoader {
             return this.cache.get(gltfSpec);
         }
 
-        const node = new Node();
+        const node = new Node(gltfSpec.name ?? '(no name)'); //dodan name
 
         node.addComponent(new Transform(gltfSpec));
 
@@ -471,6 +471,7 @@ export class GLTFLoader {
         this.cache.set(gltfSpec, node);
         return node;
     }
+
 
     loadScene(nameOrIndex) {
         const gltfSpec = this.findByNameOrIndex(this.gltf.scenes, nameOrIndex);
