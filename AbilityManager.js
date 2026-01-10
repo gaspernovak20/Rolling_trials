@@ -36,8 +36,7 @@ export class AbilityManager {
                 this.accelerationMult = 1000;
                 break;
             case '2x Top speed':
-                this.topSpeedMult = 5;
-                this.accelerationMult = 10;
+                this.topSpeedMult = 80;
                 break;
         }
     

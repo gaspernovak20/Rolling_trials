@@ -86,16 +86,36 @@ camera.isDynamic = true;
 const light = new Node();
 scene.addChild(light);
 light.addComponent(new Transform({
-    translation: [0, 5, 5],
+    translation: [9.990065574645996, 253.85763549804688, -175.3096466064453],
 }));
 light.addComponent(new Light({
     ambient: [0.3, 0.3, 0.3],
+    color: [1, 1, 1],
 }));
 
+const light2 = new Node();
+scene.addChild(light2);
+light2.addComponent(new Transform({
+    translation: [9.901371955871582, 253.85763549804688, -499.8734436035156],
+}));
+light2.addComponent(new Light({
+    ambient: [0.3, 0.3, 0.3],
+    color: [1, 1, 1],
+}));
 
+const light3 = new Node();
+scene.addChild(light3);
+light3.addComponent(new Transform({
+    translation: [2.3474042415618896,
+				253.85763549804688,
+				-900.2090454101562],
+}));
+light3.addComponent(new Light({
+    ambient: [0.3, 0.3, 0.3],
+    color: [1, 1, 1],
+}));
 
-
-const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077', 'Cube.076']; //popravljeno igrnorira piramide
+const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077']; //popravljeno igrnorira piramide
 
 
 // Generate aabb box for all nodes

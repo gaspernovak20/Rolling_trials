@@ -58,6 +58,8 @@ export class ThirdPersonController {
         this.playerRadius = playerRadius;
         this.distanceTraveled = 0;
         this.initHandlers();
+        
+        this.hitCeling = false;
     }
 
     initHandlers() {
@@ -136,7 +138,19 @@ export class ThirdPersonController {
         }
 
         const gravityMult = this.abilityManager?.gravityMult ?? 1;
-        this.velocity[1] += dt * this.gravity * gravityMult;
+        
+        let gravityFactor = 1;
+
+
+        this.velocity[1] += dt * this.gravity * gravityFactor * gravityMult;
+
+        if (this.playerNode.hitCeiling && this.velocity[1] > 0) { //ustavi skok
+            this.velocity[1] = 0;
+            this.playerNode.hitCeiling = false;
+            gravityFactor = 2.0;
+        }
+
+
 
         // Update velocity based on acceleration.
         const accMult = this.abilityManager?.accelerationMult ?? 1;
@@ -155,6 +169,13 @@ export class ThirdPersonController {
             const decay = Math.exp(dt * Math.log(1 - this.decay));
             this.velocity[0] *= decay;
             this.velocity[2] *= decay;
+        }
+
+        const topSpees = this.abilityManager?.topSpeedMult ?? 1;
+        if(this.abilityManager.activeAbility == "2x Top speed") {
+            this.increaseSpeed(topSpees)
+        } else {
+            this.maxSpeed = 50;
         }
         
 
@@ -294,6 +315,10 @@ export class ThirdPersonController {
 
     resetDistanceTraveled() {
         this.distanceTraveled = 0;
+    }
+
+    increaseSpeed(topSpees) {
+        this.maxSpeed = topSpees;
     }
 
 }

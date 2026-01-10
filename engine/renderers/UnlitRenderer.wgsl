@@ -35,12 +35,19 @@ struct MaterialUniforms {
     baseFactor: vec4f,
 }
 
-struct LightUniforms {
-    position: vec3f,
-    color: vec3f,
-    ambient: vec3f,
+struct LightData {
+    position: vec4f,  // vec3 + padding
+    color: vec4f,     // vec3 + padding
+    ambient: vec4f,   // vec3 + padding
 }
 
+struct LightsUniforms {
+    count: u32,
+    padding1: u32,
+    padding2: u32,
+    padding3: u32,
+    lights: array<LightData, 3>,
+}
 
 @group(0) @binding(0) var<uniform> camera: CameraUniforms;
 
@@ -50,7 +57,7 @@ struct LightUniforms {
 @group(2) @binding(1) var baseTexture: texture_2d<f32>;
 @group(2) @binding(2) var baseSampler: sampler;
 
-@group(3) @binding(0) var<uniform> light: LightUniforms;
+@group(3) @binding(0) var<uniform> lightsData: LightsUniforms;
 
 @vertex
 fn vertex(input: VertexInput) -> VertexOutput {
@@ -69,13 +76,35 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
     var output: FragmentOutput;
 
     let N = normalize(input.normal);
-    let L = normalize(light.position - input.position);
-    let lambert = max(0, dot(N,L));
+    let V = normalize(-input.position);
 
+    var color: vec3f = vec3f(0.0, 0.0, 0.0);
+
+    // Loop through all active lights
+    for (var i: u32 = 0u; i < lightsData.count; i++) {
+        let light = lightsData.lights[i];
+
+        // Ambient (only from first light)
+        if (i == 0u) {
+            color = color + light.ambient.xyz;
+        }
+
+        // Diffuse (Lambert)
+        let L = normalize(light.position.xyz - input.position);
+        let diff = max(dot(N, L), 0.0);
+        color = color + diff * light.color.xyz;
+
+        // Specular (Blinn-Phong)
+        let H = normalize(L + V);
+        let spec = pow(max(dot(N, H), 0.0), 20.0);
+        color = color + spec * light.color.xyz;
+    }
+
+    // Sample texture
     let texColor = textureSample(baseTexture, baseSampler, input.texcoords);
     let baseColor = texColor * material.baseFactor;
 
-    output.color = baseColor * vec4f(light.color * lambert + light.ambient, 1.0);
+    output.color = vec4f(baseColor.rgb * color, 1.0);
 
     return output;
 }

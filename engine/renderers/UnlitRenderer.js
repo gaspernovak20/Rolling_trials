@@ -41,6 +41,8 @@ export class UnlitRenderer extends BaseRenderer {
 
     constructor(canvas) {
         super(canvas);
+        this.maxLights = 3; // Maximum number of lights supported
+        this.lightsBufferCache = null; // Cache for lights buffer instead of using gpuObjects
     }
 
     async initialize() {
@@ -128,7 +130,7 @@ export class UnlitRenderer extends BaseRenderer {
             return this.gpuObjects.get(texture);
         }
 
-        const { gpuTexture } = this.prepareImage(texture.image); // ignore sRGB
+        const { gpuTexture } = this.prepareImage(texture.image);
         const { gpuSampler } = this.prepareSampler(texture.sampler);
 
         const gpuObjects = { gpuTexture, gpuSampler };
@@ -137,7 +139,6 @@ export class UnlitRenderer extends BaseRenderer {
     }
 
     prepareMaterial(material) {
-
         if (!material) {
             material = this.getDefaultMaterial();
         }
@@ -184,7 +185,6 @@ export class UnlitRenderer extends BaseRenderer {
         return gpuObjects;
     }
 
-    // Dummy texture helper
     createDummyTexture() {
         const texture = this.device.createTexture({
             size: [1, 1, 1],
@@ -204,26 +204,26 @@ export class UnlitRenderer extends BaseRenderer {
         return { texture, sampler };
     }
 
-
-    prepareLight(light) {
-        if (this.gpuObjects.has(light)) {
-            return this.gpuObjects.get(light);
+    prepareLights() {
+        if (this.lightsBufferCache) {
+            return this.lightsBufferCache;
         }
 
-        const lightUniformBuffer = this.device.createBuffer({
-            size: 48,
+        // Buffer size: 16 bytes (count + padding) + 3 lights * 48 bytes each (3 * vec4f) = 160 bytes
+        const lightsUniformBuffer = this.device.createBuffer({
+            size: 160,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        const lightBindGroup = this.device.createBindGroup({
+        const lightsBindGroup = this.device.createBindGroup({
             layout: this.pipeline.getBindGroupLayout(3),
             entries: [
-                { binding: 0, resource: { buffer: lightUniformBuffer } },
+                { binding: 0, resource: { buffer: lightsUniformBuffer } },
             ],
         });
 
-        const gpuObjects = { lightUniformBuffer, lightBindGroup };
-        this.gpuObjects.set(light, gpuObjects);
+        const gpuObjects = { lightsUniformBuffer, lightsBindGroup };
+        this.lightsBufferCache = gpuObjects;
         return gpuObjects;
     }
 
@@ -259,18 +259,55 @@ export class UnlitRenderer extends BaseRenderer {
         this.device.queue.writeBuffer(cameraUniformBuffer, 64, projectionMatrix);
         this.renderPass.setBindGroup(0, cameraBindGroup);
 
-        const light = scene.find(node => node.getComponentOfType(Light));
-        const lightComponent = light.getComponentOfType(Light);
-        const lightPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(light));
-        const { lightUniformBuffer, lightBindGroup } = this.prepareLight(lightComponent);
+        // Gather all lights in the scene
+        const lightNodes = [];
+        scene.traverse(node => {
+            if (node.getComponentOfType(Light)) {
+                lightNodes.push(node);
+            }
+        });
 
-        this.device.queue.writeBuffer(lightUniformBuffer, 0, new Float32Array([
-            ...lightPosition, 0,
-            ...lightComponent.color, 0,
-            ...lightComponent.ambient, 0,
-        ]));
+        // Prepare lights buffer
+        const { lightsUniformBuffer, lightsBindGroup } = this.prepareLights();
+        
+        const numLights = Math.min(lightNodes.length, this.maxLights);
+        
+        // Create buffer: 4 u32s (16 bytes) + 3 lights * 3 vec4f (144 bytes) = 160 bytes total
+        const lightsData = new Float32Array(40);
+        
+        // Write light count as u32 (index 0), rest is padding
+        const countView = new Uint32Array(lightsData.buffer, 0, 1);
+        countView[0] = numLights;
+        
+        // Write each light's data starting at byte 16 (index 4)
+        for (let i = 0; i < numLights; i++) {
+            const lightNode = lightNodes[i];
+            const lightComponent = lightNode.getComponentOfType(Light);
+            const lightPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(lightNode));
+            
+            const baseIndex = 4 + (i * 12); // Start at index 4, each light is 12 floats (3 vec4f)
+            
+            // Position as vec4f
+            lightsData[baseIndex + 0] = lightPosition[0];
+            lightsData[baseIndex + 1] = lightPosition[1];
+            lightsData[baseIndex + 2] = lightPosition[2];
+            lightsData[baseIndex + 3] = 0;
+            
+            // Color as vec4f
+            lightsData[baseIndex + 4] = lightComponent.color[0];
+            lightsData[baseIndex + 5] = lightComponent.color[1];
+            lightsData[baseIndex + 6] = lightComponent.color[2];
+            lightsData[baseIndex + 7] = 0;
+            
+            // Ambient as vec4f
+            lightsData[baseIndex + 8] = lightComponent.ambient[0];
+            lightsData[baseIndex + 9] = lightComponent.ambient[1];
+            lightsData[baseIndex + 10] = lightComponent.ambient[2];
+            lightsData[baseIndex + 11] = 0;
+        }
 
-        this.renderPass.setBindGroup(3, lightBindGroup);
+        this.device.queue.writeBuffer(lightsUniformBuffer, 0, lightsData);
+        this.renderPass.setBindGroup(3, lightsBindGroup);
 
         this.renderNode(scene);
 
@@ -324,6 +361,4 @@ export class UnlitRenderer extends BaseRenderer {
         }
         return this._defaultMaterial;
     }
-
-
 }

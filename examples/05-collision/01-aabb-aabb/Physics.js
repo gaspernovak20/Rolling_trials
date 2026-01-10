@@ -10,6 +10,9 @@ import { AbilityManager } from '../../../AbilityManager.js'; //zaradi KeyOverlay
 const collectSound = new Audio(new URL('../../../sounds/collect.mp3', import.meta.url)); //zvok za pobiranje diamantov
 collectSound.volume = 0.8;
 
+const pressButton = new Audio(new URL('../../../sounds/button-press.mp3', import.meta.url)); //ko skocimo na gumb
+pressButton.volume = 0.8;
+
 const abilityManager = new AbilityManager(); 
 window.keyOverlay = new KeyOverlay(document.body, abilityManager);
 
@@ -27,11 +30,20 @@ export class Physics {
             ]; 
         this.platformData = new Map();
         this.lastPlayerY = null; //zadnji Y zato da se ne teleporiramo na block
+
+        this.buttonStartY = null;   // začetna pozicija
+        this.buttonMaxDrop = 0.8;   // koliko se lahko pogrezne
+        this.buttonPressed = false;  // ali je trenutno spuščen
+        this.buttonActive = true;    // ali lahko gumb trenutno reagira
+
+
     }
 
     update(t, dt) {
         this.updateMovingPlatforms(t, dt); //premikanje platform, diamanti se ne premikajo z njimi
         this.updateRotateDiamands(t, dt);
+
+        
 
 
         this.scene.traverse(node => {
@@ -57,26 +69,27 @@ export class Physics {
     updateRotateDiamands(time, dt) {
     const rotationSpeed = 1; // hitrost vrtenja (rad/s)
 
-    this.scene.traverse(node => {
-        if (!this.spinningDiamads.includes(node.name)) return;
+        this.scene.traverse(node => {
+            if (!this.spinningDiamads.includes(node.name)) return;
 
-        const transform = node.getComponentOfType(Transform);
-        if (!transform) return;
+            const transform = node.getComponentOfType(Transform);
+            if (!transform) return;
 
-        // če še nima rotacije, jo inicializiramo
-        if (!transform.rotation) {
-            transform.rotation = [0, 0, 0, 1];
-        }
+            // če še nima rotacije, jo inicializiramo
+            if (!transform.rotation) {
+                transform.rotation = [0, 0, 0, 1];
+            }
 
-        // vrti okoli Y osi
-        const q = transform.rotation;
-        const delta = rotationSpeed * dt;
+            // vrti okoli Y osi
+            const q = transform.rotation;
+            const delta = rotationSpeed * dt;
 
-        // q = q * rotY
-        const rotY = [0, Math.sin(delta / 2), 0, Math.cos(delta / 2)];
-        quat.multiply(q, q, rotY);
-    });
-}
+            // q = q * rotY
+            const rotY = [0, Math.sin(delta / 2), 0, Math.cos(delta / 2)];
+            quat.multiply(q, q, rotY);
+        });
+    }
+    
 
 
     updateMovingPlatforms(time, dt) {
@@ -114,9 +127,10 @@ export class Physics {
             transform.translation[0] =
                 center + Math.sin(time * speed + data.phase) * amplitude;
         });
+    }
 
 
-}
+
 
 
     intervalIntersection(min1, max1, min2, max2) {
@@ -155,8 +169,6 @@ export class Physics {
 
     resolveCollision(a, b) {
         
-
-
         // Get global space AABBs.
         const aBox = this.getTransformedAABB(a);
         const bBox = this.getTransformedAABB(b);
@@ -174,6 +186,42 @@ export class Physics {
         if(b.name === "Cube.068"){
             console.log("GGs");
         }
+
+        if (b.name === "Button.1") {
+            const transform = b.getComponentOfType(Transform);
+            if (!transform) return;
+
+            // Shrani začetno Y samo prvič
+            if (this.buttonStartY === null) {
+                this.buttonStartY = transform.translation[1];
+            }
+
+            const targetY = this.buttonStartY - this.buttonMaxDrop;
+            const step = 0.05;
+
+            if (this.buttonActive && transform.translation[1] > targetY) {
+                // spust gumba
+                transform.translation[1] -= step;
+
+                if (transform.translation[1] <= targetY) {
+                    transform.translation[1] = targetY;
+
+                    if (!this.buttonPressed) {
+                        this.buttonPressed = true;
+                        pressButton.currentTime = 0;
+                        pressButton.play();
+                        console.log("Button pressed");
+
+                        // gumb je zdaj “spuščen”
+                        this.buttonActive = false;
+                    }
+                }
+            }
+        }
+
+
+
+
 
         if(this.spinningDiamads.includes(b.name)){
             console.log("Diamant dotaknjen");
@@ -239,9 +287,11 @@ export class Physics {
             minDiff = diffb[0];
             minDirection = [-minDiff, 0, 0];
         }
-        if (diffb[1] >= 0 && diffb[1] < minDiff) {
+        if (diffb[1] >= 0 && diffb[1] < minDiff) { //popravi ko zadane strop
             minDiff = diffb[1];
             minDirection = [0, -minDiff, 0];
+            
+            a.hitCeiling = true;
         }
         if (diffb[2] >= 0 && diffb[2] < minDiff) {
             minDiff = diffb[2];
@@ -265,13 +315,14 @@ export class Physics {
         return playerY >= aabb.max[1] - 0.01;
     }
 
-    
 
     getGroundHeightAt(x, z) {
     let groundY = -Infinity;
 
     this.scene.traverse(node => {
         if (!node.isStatic) return;
+
+        if (this.spinningDiamads.includes(node.name)) return; //ignoriramo diamante kot tla
 
         const nodeBox = this.getTransformedAABB(node);
 
