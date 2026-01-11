@@ -196,7 +196,7 @@ export class Physics {
         const transform = playerNode.getComponentOfType(Transform);
         if (!transform) return;
 
-        transform.translation = [0, 0, 0];
+        transform.translation = [0, 0, -40];
     }
 
     resolveCollision(a, b) {
@@ -214,7 +214,7 @@ export class Physics {
             console.log("Win!");
         }
 
-        if (b.name === "Cube.068") {
+        if (b.name === "Cube.068" && a.name === "ball") {
             this.restart()
             console.log("GGs");
         }
