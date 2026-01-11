@@ -41,7 +41,7 @@ export class UnlitRenderer extends BaseRenderer {
 
     constructor(canvas) {
         super(canvas);
-        this.maxLights = 3; // Maximum number of lights supported
+        this.maxLights = 17; // Maximum number of lights supported
         this.lightsBufferCache = null; // Cache for lights buffer instead of using gpuObjects
     }
 
@@ -160,15 +160,23 @@ export class UnlitRenderer extends BaseRenderer {
         }
 
         const materialUniformBuffer = this.device.createBuffer({
-            size: 16,
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
         const baseFactor = material.baseFactor ?? [1, 1, 1, 1];
+        const emissive = material.emissiveFactor ?? [0, 0, 0];
+
         this.device.queue.writeBuffer(
             materialUniformBuffer,
             0,
             new Float32Array(baseFactor)
+        );
+
+        this.device.queue.writeBuffer(
+            materialUniformBuffer,
+            16,
+            new Float32Array([...emissive, 0])
         );
 
         const materialBindGroup = this.device.createBindGroup({
@@ -209,9 +217,18 @@ export class UnlitRenderer extends BaseRenderer {
             return this.lightsBufferCache;
         }
 
-        // Buffer size: 16 bytes (count + padding) + 3 lights * 48 bytes each (3 * vec4f) = 160 bytes
+        const floatsPerLight = 20;
+        const headerFloats = 4;
+
+        const totalFloats = headerFloats + this.maxLights * floatsPerLight;
+        const totalBytes = totalFloats * 4;
+
+        // obvezno poravnaj na 16 B
+        const alignedSize = Math.ceil(totalBytes / 16) * 16;
+
+        // 16 bytes header + 3 lights * 80 bytes (5 * vec4f)
         const lightsUniformBuffer = this.device.createBuffer({
-            size: 160,
+            size: alignedSize,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -271,44 +288,54 @@ export class UnlitRenderer extends BaseRenderer {
 
         // Prepare lights buffer
         const { lightsUniformBuffer, lightsBindGroup } = this.prepareLights();
-        
+
         const numLights = Math.min(lightNodes.length, this.maxLights);
-        
+
         // Create buffer: 4 u32s (16 bytes) + 3 lights * 3 vec4f (144 bytes) = 160 bytes total
-        const lightsData = new Float32Array(40);
-        
-        // Write light count as u32 (index 0), rest is padding
+        const lightsData = new Float32Array(4 + this.maxLights * 20);
+
         const countView = new Uint32Array(lightsData.buffer, 0, 1);
         countView[0] = numLights;
-        
-        // Write each light's data starting at byte 16 (index 4)
+
         for (let i = 0; i < numLights; i++) {
             const lightNode = lightNodes[i];
             const lightComponent = lightNode.getComponentOfType(Light);
             const lightPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(lightNode));
-            
-            
-            
-            const baseIndex = 4 + (i * 12); // Start at index 4, each light is 12 floats (3 vec4f)
-            
-            // Position as vec4f
+
+            const baseIndex = 4 + (i * 20);
+
+            // position
             lightsData[baseIndex + 0] = lightPosition[0];
             lightsData[baseIndex + 1] = lightPosition[1];
             lightsData[baseIndex + 2] = lightPosition[2];
             lightsData[baseIndex + 3] = 0;
-            
-            // Color as vec4f
+
+            // color
             lightsData[baseIndex + 4] = lightComponent.color[0];
             lightsData[baseIndex + 5] = lightComponent.color[1];
             lightsData[baseIndex + 6] = lightComponent.color[2];
             lightsData[baseIndex + 7] = 0;
-            
-            // Ambient as vec4f
+
+            // ambient
             lightsData[baseIndex + 8] = lightComponent.ambient[0];
             lightsData[baseIndex + 9] = lightComponent.ambient[1];
             lightsData[baseIndex + 10] = lightComponent.ambient[2];
             lightsData[baseIndex + 11] = 0;
+
+
+            // direction
+            lightsData[baseIndex + 12] = lightComponent.direction[0];
+            lightsData[baseIndex + 13] = lightComponent.direction[1];
+            lightsData[baseIndex + 14] = lightComponent.direction[2];
+            lightsData[baseIndex + 15] = 0;
+
+            // angles (cosines)
+            lightsData[baseIndex + 16] = Math.cos(lightComponent.innerAngle);
+            lightsData[baseIndex + 17] = Math.cos(lightComponent.outerAngle);
+            lightsData[baseIndex + 18] = 0;
+            lightsData[baseIndex + 19] = 0;
         }
+
 
         this.device.queue.writeBuffer(lightsUniformBuffer, 0, lightsData);
         this.renderPass.setBindGroup(3, lightsBindGroup);

@@ -34,12 +34,16 @@ struct ModelUniforms {
 
 struct MaterialUniforms {
     baseFactor: vec4f,
+    emissive   : vec3<f32>,
+    padding    : f32,
 }
 
 struct LightData {
-    position: vec4f,
-    color: vec4f,
-    ambient: vec4f,
+    position  : vec4f,
+    color     : vec4f,
+    ambient   : vec4f,
+    direction : vec4f,
+    angles    : vec4f, // x = cos(inner), y = cos(outer)
 }
 
 struct LightsUniforms {
@@ -47,7 +51,7 @@ struct LightsUniforms {
     padding1: u32,
     padding2: u32,
     padding3: u32,
-    lights: array<LightData, 3>,
+    lights: array<LightData, 17>,
 }
 
 @group(0) @binding(0) var<uniform> camera: CameraUniforms;
@@ -79,12 +83,12 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
     let N = normalize(input.normal);
     let V = normalize(camera.position - input.position);
 
-    var color: vec3f = vec3f(0.0, 0.0, 0.0);
+    var color: vec3f = vec3f(0.15);
 
     // Add ambient from first light only (to avoid over-brightening)
-    if (lightsData.count > 0u) {
-        color = color + lightsData.lights[0].ambient.xyz * 0.3; // Reduced ambient contribution
-    }
+    // if (lightsData.count > 0u) {
+    //     color = color + lightsData.lights[1].ambient.xyz * 0.3; // Reduced ambient contribution
+    // }
 
     // Loop through all active lights for diffuse and specular
     for (var i: u32 = 0u; i < lightsData.count; i++) {
@@ -95,25 +99,50 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
         let distance = length(lightDir);
         let L = normalize(lightDir);
         
-        // Very weak attenuation for distant ceiling lights
-        // Increased light intensity with a multiplier
-        let attenuation = 1.3 / (1.0 + 0.0005 * distance + 0.00001 * distance * distance);
+        let attenuation = 3.0 / (1.0 + 0.002 * distance);
+
+
+        // ===== SPOTLIGHT =====
+        var spotFactor: f32 = 1.0;
+
+        if (!(light.angles.x == 0.0 && light.angles.y == 0.0)) {
+            let spotDir = normalize(light.direction.xyz);
+            let cosTheta = dot(-L, spotDir);
+
+            let inner = light.angles.x;
+            let outer = light.angles.y;
+
+            spotFactor = clamp(
+                (cosTheta - outer) / (inner - outer),
+                0.0,
+                1.0
+            );
+            
+        }
+        // ====================
 
         // Diffuse (Lambert)
         let diff = max(dot(N, L), 0.0);
-        color = color + diff * light.color.xyz * attenuation;
+        color += diff * light.color.xyz * attenuation * spotFactor;
 
         // Specular (Blinn-Phong) - reduced for less shiny surfaces
         let H = normalize(L + V);
         let spec = pow(max(dot(N, H), 0.0), 16.0);
-        color = color + spec * light.color.xyz * attenuation * 0.2;
+
+        color += spec * light.color.xyz * attenuation * 0.2 * spotFactor;
     }
 
-    // Sample texture
     let texColor = textureSample(baseTexture, baseSampler, input.texcoords);
     let baseColor = texColor * material.baseFactor;
 
-    output.color = vec4f(baseColor.rgb * color, 1.0);
+    // lighting contribution
+    let litColor = baseColor.rgb * color;
+
+    // emissive contribution (NEODVISNO od luči)
+    let emissiveColor = material.emissive;
+
+    // končni color
+    output.color = vec4f(litColor + emissiveColor, baseColor.a);
 
     return output;
 }

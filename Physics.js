@@ -13,7 +13,7 @@ collectSound.volume = 0.8;
 const pressButton = new Audio(new URL('../../../sounds/button-press.mp3', import.meta.url)); //ko skocimo na gumb
 pressButton.volume = 0.8;
 
-const abilityManager = new AbilityManager(); 
+const abilityManager = new AbilityManager();
 
 
 
@@ -23,10 +23,10 @@ export class Physics {
         this.scene = scene;
         this.movingPlatforms = ['Platform1', 'Platform2', 'Platform3'];
         this.spinningDiamads = ['Diamond1', 'Diamond2', 'Diamond3', 'Diamond4',
-            'Diamond5', 'Diamond6', 'Diamond7','Diamond8',
-            'Diamond9', 'Diamond10','Diamond11', 'Diamond12',
-             'Diamond13', 'Diamond14'
-            ]; 
+            'Diamond5', 'Diamond6', 'Diamond7', 'Diamond8',
+            'Diamond9', 'Diamond10', 'Diamond11', 'Diamond12',
+            'Diamond13', 'Diamond14'
+        ];
         this.platformData = new Map();
         this.lastPlayerY = null; //zadnji Y zato da se ne teleporiramo na block
 
@@ -42,14 +42,14 @@ export class Physics {
         this.updateMovingPlatforms(t, dt); //premikanje platform, diamanti se ne premikajo z njimi
         this.updateRotateDiamands(t, dt);
 
-        
+
 
 
         this.scene.traverse(node => {
             if (node.isDynamic) {
                 this.scene.traverse(other => {
                     if (node !== other && other.isStatic) {
-                        
+
                         this.resolveCollision(node, other);
                     }
                 });
@@ -66,7 +66,7 @@ export class Physics {
     }
 
     updateRotateDiamands(time, dt) {
-    const rotationSpeed = 1; // hitrost vrtenja (rad/s)
+        const rotationSpeed = 1; // hitrost vrtenja (rad/s)
 
         this.scene.traverse(node => {
             if (!this.spinningDiamads.includes(node.name)) return;
@@ -88,7 +88,7 @@ export class Physics {
             quat.multiply(q, q, rotY);
         });
     }
-    
+
 
 
     updateMovingPlatforms(time, dt) {
@@ -167,7 +167,7 @@ export class Physics {
     }
 
     resolveCollision(a, b) {
-        
+
         // Get global space AABBs.
         const aBox = this.getTransformedAABB(a);
         const bBox = this.getTransformedAABB(b);
@@ -182,7 +182,7 @@ export class Physics {
             console.log("Win!");
         }
 
-        if(b.name === "Cube.068"){
+        if (b.name === "Cube.068") {
             console.log("GGs");
         }
 
@@ -218,24 +218,21 @@ export class Physics {
             }
         }
 
-
-
-
-
-        if(this.spinningDiamads.includes(b.name)){
+        if (this.spinningDiamads.includes(b.name)) {
             console.log("Diamant dotaknjen");
 
             const index = this.spinningDiamads.indexOf(b.name);
             if (index !== -1) this.spinningDiamads.splice(index, 1);
             const transform = b.getComponentOfType(Transform);
             if (transform) {
-                transform.translation[1] = -100; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
+                transform.translation[1] = -1000; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
+                transform.translation[0] = -1000; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
             }
-            
+
             collectSound.currentTime = 0;
             collectSound.play();
 
-            if(window.keyOverlay) window.keyOverlay.addDiamond();
+            if (window.keyOverlay) window.keyOverlay.addDiamond();
 
         }
 
@@ -289,7 +286,7 @@ export class Physics {
         if (diffb[1] >= 0 && diffb[1] < minDiff) { //popravi ko zadane strop
             minDiff = diffb[1];
             minDirection = [0, -minDiff, 0];
-            
+
             a.hitCeiling = true;
         }
         if (diffb[2] >= 0 && diffb[2] < minDiff) {
@@ -316,25 +313,25 @@ export class Physics {
 
 
     getGroundHeightAt(x, z) {
-    let groundY = -Infinity;
+        let groundY = -Infinity;
 
-    this.scene.traverse(node => {
-        if (!node.isStatic) return;
+        this.scene.traverse(node => {
+            if (!node.isStatic) return;
 
-        if (this.spinningDiamads.includes(node.name)) return; //ignoriramo diamante kot tla
+            if (this.spinningDiamads.includes(node.name)) return; //ignoriramo diamante kot tla
 
-        const nodeBox = this.getTransformedAABB(node);
+            const nodeBox = this.getTransformedAABB(node);
 
-        // more bitit horizontalno pod zogo
-        if (!this.xzIntersection(x, z, nodeBox)) return;
+            // more bitit horizontalno pod zogo
+            if (!this.xzIntersection(x, z, nodeBox)) return;
 
-        // samo ce je pod zogo
-        if (nodeBox.max[1] <= this.lastPlayerY + 0.05) {
-            groundY = Math.max(groundY, nodeBox.max[1]);
-        }
-    });
+            // samo ce je pod zogo
+            if (nodeBox.max[1] <= this.lastPlayerY + 0.05) {
+                groundY = Math.max(groundY, nodeBox.max[1]);
+            }
+        });
 
-    return groundY === -Infinity ? null : groundY;
+        return groundY === -Infinity ? null : groundY;
     }
 
 
