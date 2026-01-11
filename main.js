@@ -114,7 +114,7 @@ light.addComponent(new Transform({
 }));
 light.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
-    color: [0.3, 0.3, 0.3],
+    color: [0.3, 0.5, 0.3],
     direction: [0, -1, 0],          // NAVZDOL
     innerAngle: Math.PI / 4,        // ~30°
     outerAngle: Math.PI / 4,
