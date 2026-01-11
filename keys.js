@@ -1,130 +1,122 @@
 export class KeyOverlay {
     constructor(parent = document.body, abilityManager = null) {
+        this.parent = parent;
+        this.abilityManager = abilityManager;
+
         this.keys = ['W', 'A', 'S', 'D', 'E', ' '];
-        this.abilityList = [
-            '2x Gravity', '2x Jump', '3x Gravity', '3x Jump', '2x Top speed', 'Normal'
+        this.abilities = [
+            '2x Gravity', '2x Jump', '3x Gravity',
+            '3x Jump', '2x Top speed', 'Normal'
         ];
 
-        this.abilityManager = abilityManager;
-        this.keyElements = {};
-        this.parent = parent;
-
-        this.diamondsCollected = 0;
+        this.keyEls = {};
+        this.diamonds = 0;
         this.currentAbility = null;
 
-        this.initOverlay();
-        this.initAbilityOverlay();
-        this.initDiamondCounter();
-        this.addGlobalEventListeners();
+        this.createKeyOverlay();
+        this.createAbilityOverlay();
+        this.createDiamondCounter();
+        this.loadSounds();
+        this.addEvents();
         this.addStyles();
     }
 
-    initOverlay() {
-        this.overlay = document.createElement('div');
-        this.overlay.id = 'keyOverlay';
-        this.overlay.style.position = 'fixed';
-        this.overlay.style.bottom = '20px';
-        this.overlay.style.right = '20px';
-        this.overlay.style.display = 'flex';
-        this.overlay.style.flexDirection = 'column';
-        this.overlay.style.alignItems = 'center';
-        this.overlay.style.gap = '10px';
-        this.overlay.style.fontFamily = 'sans-serif';
-        this.overlay.style.userSelect = 'none';
-        this.overlay.style.zIndex = '100';
-        this.parent.appendChild(this.overlay);
-
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.gap = '10px';
-        topRow.appendChild(this.createKey('W'));
-        topRow.appendChild(this.createKey('E'));
-        this.overlay.appendChild(topRow);
-
-        const midRow = document.createElement('div');
-        midRow.style.display = 'flex';
-        midRow.style.gap = '10px';
-        ['A', 'S', 'D'].forEach(k => midRow.appendChild(this.createKey(k)));
-        this.overlay.appendChild(midRow);
-
-        const keySpace = this.createKey(' ');
-        keySpace.textContent = 'SPACE';
-        keySpace.style.width = '160px';
-        this.overlay.appendChild(keySpace);
+    el(tag, styles = {}, text = '') {
+        const e = document.createElement(tag);
+        Object.assign(e.style, styles);
+        if (text) e.textContent = text;
+        return e;
     }
 
-    initAbilityOverlay() {
-        this.abilityOverlay = document.createElement('div');
-        this.abilityOverlay.id = 'abilityOverlay';
-        this.abilityOverlay.style.position = 'fixed';
-        this.abilityOverlay.style.top = '20px';
-        this.abilityOverlay.style.right = '20px';
-        this.abilityOverlay.style.fontFamily = 'sans-serif';
-        this.abilityOverlay.style.zIndex = '100';
-        this.abilityOverlay.style.background = '#333';
-        this.abilityOverlay.style.color = '#fff';
-        this.abilityOverlay.style.padding = '10px 15px';
-        this.abilityOverlay.style.borderRadius = '8px';
-        this.abilityOverlay.style.display = 'none'; // sprva skrito
-        this.abilityOverlay.style.fontWeight = 'bold';
-        this.abilityOverlay.style.transition = 'background 0.3s';
+    createKeyOverlay() {
+        this.overlay = this.el('div', {
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '10px',
+            fontFamily: 'sans-serif',
+            userSelect: 'none',
+            zIndex: 100
+        });
+
+        const row = keys =>
+            this.el('div', { display: 'flex', gap: '10px' },
+                keys.forEach(k => this.overlayRow.appendChild(this.createKey(k)))
+            );
+
+        const top = this.el('div', { display: 'flex', gap: '10px' });
+        ['W', 'E'].forEach(k => top.appendChild(this.createKey(k)));
+
+        const mid = this.el('div', { display: 'flex', gap: '10px' });
+        ['A', 'S', 'D'].forEach(k => mid.appendChild(this.createKey(k)));
+
+        const space = this.createKey(' ');
+        space.textContent = 'SPACE';
+        space.style.width = '160px';
+
+        this.overlay.append(top, mid, space);
+        this.parent.appendChild(this.overlay);
+    }
+
+    createAbilityOverlay() {
+        this.abilityOverlay = this.el('div', {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: '#333',
+            color: '#fff',
+            padding: '10px 15px',
+            borderRadius: '8px',
+            fontFamily: 'sans-serif',
+            fontWeight: 'bold',
+            display: 'none',
+            zIndex: 100
+        });
+
         this.parent.appendChild(this.abilityOverlay);
     }
 
-    initDiamondCounter() {
-        this.diamondCounter = document.createElement('div');
-        this.diamondCounter.id = 'diamondCounter';
-        this.diamondCounter.style.position = 'fixed';
-        this.diamondCounter.style.top = '20px';
-        this.diamondCounter.style.left = '20px';
-        this.diamondCounter.style.fontFamily = 'sans-serif';
-        this.diamondCounter.style.fontSize = '24px';
-        this.diamondCounter.style.color = '#fff';
-        this.diamondCounter.style.zIndex = '100';
-        this.diamondCounter.style.background = 'transparent';
-        this.diamondCounter.style.padding = '10px 15px';
-        this.diamondCounter.style.borderRadius = '8px';
-        this.diamondCounter.style.fontWeight = 'bold';
-        this.diamondCounter.textContent = '0 / 14 💎';
-        this.parent.appendChild(this.diamondCounter);
+    createDiamondCounter() {
+        this.counter = this.el('div', {
+            position: 'fixed',
+            top: '20px',
+            left: '20px',
+            color: '#fff',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            fontFamily: 'sans-serif',
+            zIndex: 100
+        }, '0 / 14 💎');
+
+        this.parent.appendChild(this.counter);
     }
 
-    createKey(k) {
+    createKey(key) {
         const el = document.createElement('div');
         el.className = 'key';
-        el.id = k === ' ' ? 'keySpace' : 'key' + k;
-        el.textContent = k === ' ' ? 'SPACE' : k;
-        this.keyElements[k] = el;
+        el.textContent = key === ' ' ? 'SPACE' : key;
+        this.keyEls[key] = el;
         return el;
     }
 
-    addGlobalEventListeners() {
-        window.addEventListener('keydown', (e) => this.onKeyDown(e));
-        window.addEventListener('keyup', (e) => this.onKeyUp(e));
-
-        this.spinSound = new Audio(new URL('../../sounds/spin.mp3', import.meta.url));
-        this.spinSound.volume = 0.7;
-        this.selectSound = new Audio(new URL('../../sounds/select.mp3', import.meta.url));
-        this.selectSound.volume = 0.8;
+    addEvents() {
+        window.addEventListener('keydown', e => this.setKey(e, true));
+        window.addEventListener('keyup', e => this.setKey(e, false));
     }
 
-    onKeyDown(e) {
+    setKey(e, active) {
         const key = e.key.toUpperCase();
-        if (this.keyElements[key]) this.keyElements[key].classList.add('active');
-        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.add('active');
-
-        if (key === 'E') this.toggleAbility();
-    }
-
-    onKeyUp(e) {
-        const key = e.key.toUpperCase();
-        if (this.keyElements[key]) this.keyElements[key].classList.remove('active');
-        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.remove('active');
+        const el = this.keyEls[key] || (key === ' ' && this.keyEls[' ']);
+        if (el) el.classList.toggle('active', active);
+        if (active && key === 'E') this.toggleAbility();
     }
 
     toggleAbility() {
-        clearInterval(this.abilityInterval); 
-        clearTimeout(this.abilityTimeout);
+        clearInterval(this.spinInterval);
+        clearTimeout(this.spinTimeout);
 
         if (this.currentAbility) {
             this.abilityOverlay.style.display = 'none';
@@ -133,63 +125,61 @@ export class KeyOverlay {
         }
 
         this.abilityOverlay.style.display = 'block';
-        let index = 0;
-        const spinCount = 35;
+        let i = 0;
 
-        this.spinSound.currentTime = 0;
         this.spinSound.play();
 
-        this.abilityInterval = setInterval(() => {
-            this.abilityOverlay.textContent = this.abilityList[index];
-            index = (index + 1) % this.abilityList.length;
+        this.spinInterval = setInterval(() => {
+            this.abilityOverlay.textContent = this.abilities[i++ % this.abilities.length];
         }, 100);
 
-        this.abilityTimeout = setTimeout(() => {
-            clearInterval(this.abilityInterval);
-            this.abilityInterval = null;
+        this.spinTimeout = setTimeout(() => {
+            clearInterval(this.spinInterval);
 
-            const finalAbility = this.abilityList[Math.floor(Math.random() * this.abilityList.length)];
-            this.currentAbility = finalAbility;
-            this.abilityOverlay.textContent = finalAbility;
+            const ability = this.abilities[Math.floor(Math.random() * this.abilities.length)];
+            this.currentAbility = ability;
+            this.abilityOverlay.textContent = ability;
 
-            this.selectSound.currentTime = 0;
             this.selectSound.play();
+            this.flashAbility();
 
-            // Flash background
-            this.abilityOverlay.style.background = '#FFD700';
-            setTimeout(() => this.abilityOverlay.style.background = '#333', 500);
-
-            this.abilityManager?.setAbility(finalAbility);
-            this.abilityTimeout = null;
-        }, spinCount * 100);
+            this.abilityManager?.setAbility(ability);
+        }, 3500);
     }
 
+    flashAbility() {
+        this.abilityOverlay.style.background = '#FFD700';
+        setTimeout(() => this.abilityOverlay.style.background = '#333', 500);
+    }
 
     addDiamond() {
-        this.diamondsCollected++;
-        this.diamondCounter.textContent = `${this.diamondsCollected} / 14 💎`;
+        this.counter.textContent = `${++this.diamonds} / 14 💎`;
+    }
+
+    loadSounds() {
+        this.spinSound = new Audio(new URL('../../sounds/spin.mp3', import.meta.url));
+        this.selectSound = new Audio(new URL('../../sounds/select.mp3', import.meta.url));
+        this.spinSound.volume = 0.7;
+        this.selectSound.volume = 0.8;
     }
 
     addStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
+        document.head.appendChild(this.el('style', {}, `
             .key {
                 width: 50px;
                 height: 50px;
-                background-color: #555;
+                background: #555;
                 color: white;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 border-radius: 8px;
                 font-weight: bold;
-                transition: background-color 0.1s;
+                transition: background 0.1s;
             }
             .key.active {
-                background-color: rgba(154, 154, 154, 1);
-                color: white;
+                background: #9a9a9a;
             }
-        `;
-        document.head.appendChild(style);
+        `));
     }
 }

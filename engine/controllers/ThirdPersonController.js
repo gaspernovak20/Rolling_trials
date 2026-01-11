@@ -1,7 +1,6 @@
 import { quat, vec3, mat4, mat3 } from 'glm';
 
 import { Transform } from '../core/Transform.js';
-// import { of } from 'core-js/core/array';
 
 
 
@@ -96,23 +95,19 @@ export class ThirdPersonController {
         }
         const cameraPosition = transformCamera.translation;
 
-        // Calculate forward and right vectors.
         const cos = Math.cos(this.yaw);
         const sin = Math.sin(this.yaw);
 
         const forward = [-sin, 0, -cos];
         const right = [cos, 0, -sin];
 
-        // Camera offset
         const offset = [Math.sin(this.yaw) * Math.cos(this.pitch) * this.radius,
         Math.sin(this.pitch) * this.radius,
         Math.cos(this.yaw) * Math.cos(this.pitch) * this.radius]
 
-        // Ground height
         this.groundY = this.physics.getGroundHeightAt(playerPosition[0], playerPosition[2]);
 
 
-        // Map user input to the acceleration vector.
         const acc = vec3.create();
         if (this.keys['KeyW']) {
             vec3.add(acc, acc, forward);
@@ -151,7 +146,6 @@ export class ThirdPersonController {
 
 
 
-        // Update velocity based on acceleration.
         const accMult = this.abilityManager?.accelerationMult ?? 1;
         vec3.scaleAndAdd(
             this.velocity,
@@ -160,7 +154,6 @@ export class ThirdPersonController {
             dt * this.acceleration * accMult
         );
 
-        // If there is no user input, apply decay.
         if (!this.keys['KeyW'] &&
             !this.keys['KeyS'] &&
             !this.keys['KeyD'] &&

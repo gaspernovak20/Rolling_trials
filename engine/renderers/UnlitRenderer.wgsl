@@ -85,24 +85,15 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
 
     var color: vec3f = vec3f(0.15);
 
-    // Add ambient from first light only (to avoid over-brightening)
-    // if (lightsData.count > 0u) {
-    //     color = color + lightsData.lights[1].ambient.xyz * 0.3; // Reduced ambient contribution
-    // }
-
-    // Loop through all active lights for diffuse and specular
     for (var i: u32 = 0u; i < lightsData.count; i++) {
         let light = lightsData.lights[i];
 
-        // Calculate distance and attenuation
         let lightDir = light.position.xyz - input.position;
         let distance = length(lightDir);
         let L = normalize(lightDir);
         
         let attenuation = 3.0 / (1.0 + 0.002 * distance);
 
-
-        // ===== SPOTLIGHT =====
         var spotFactor: f32 = 1.0;
 
         if (!(light.angles.x == 0.0 && light.angles.y == 0.0)) {
@@ -119,13 +110,12 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
             );
             
         }
-        // ====================
 
-        // Diffuse (Lambert)
+        // (Lambert)
         let diff = max(dot(N, L), 0.0);
         color += diff * light.color.xyz * attenuation * spotFactor;
 
-        // Specular (Blinn-Phong) - reduced for less shiny surfaces
+        // (Blinn-Phong)
         let H = normalize(L + V);
         let spec = pow(max(dot(N, H), 0.0), 16.0);
 

@@ -151,8 +151,8 @@ light3.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
     color: [0.3, 0.1, 0.1],
     direction: [0, -1, 0],          // NAVZDOL
-    innerAngle: Math.PI / 3,        // ~30°
-    outerAngle: Math.PI / 3,
+    innerAngle: Math.PI / 2,        // ~30°
+    outerAngle: Math.PI / 2,
 }));
 
 const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077']; //popravljeno igrnorira piramide

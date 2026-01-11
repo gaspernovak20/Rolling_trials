@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>You Win!</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: url("images/EndScreen.png") no-repeat center center;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #playAgainButton {
+            width: 300px;
+            max-width: 80vw;
+            height: auto;
+            aspect-ratio: 300 / 120;
+            background: url("images/PlayAgainButton.png") no-repeat center center;
+            background-size: contain;
+            border: none;
+            cursor: pointer;
+            margin-top: 230px; 
+        }
+
+        #playAgainButton:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <button id="playAgainButton"></button>
+
+    <script>
+        document.getElementById('playAgainButton').addEventListener('click', () => {
+            window.location.href = "index.html";
+        });
+    </script>
+</body>
+</html>

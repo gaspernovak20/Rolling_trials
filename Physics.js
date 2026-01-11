@@ -80,11 +80,6 @@ export class Physics {
             const transform = node.getComponentOfType(Transform);
             if (!transform) return;
 
-            // če še nima rotacije, jo inicializiramo
-            if (!transform.rotation) {
-                transform.rotation = [0, 0, 0, 1];
-            }
-
             // vrti okoli Y osi
             const q = transform.rotation;
             const delta = rotationSpeed * dt;
@@ -210,9 +205,10 @@ export class Physics {
             return;
         }
 
+        
         if (b.name === "Goal") {
-            console.log("Win!");
-        }
+            window.location.href = "youWin.html";
+        }    
 
         if (b.name === "Cube.068" && a.name === "ball") {
             this.restart()
@@ -249,14 +245,13 @@ export class Physics {
 
 
 
-        if (this.spinningDiamads.includes(b.name)) {
-            console.log("Diamant dotaknjen");
-
+        if (this.spinningDiamads.includes(b.name) && a.name === "ball") {
             const index = this.spinningDiamads.indexOf(b.name);
             if (index !== -1) this.spinningDiamads.splice(index, 1);
             const transform = b.getComponentOfType(Transform);
             if (transform) {
-                transform.translation[1] = -100; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
+                transform.translation[1] = -1000; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
+                transform.translation[0] = -1000;
             }
 
             collectSound.currentTime = 0;

@@ -41,8 +41,8 @@ export class UnlitRenderer extends BaseRenderer {
 
     constructor(canvas) {
         super(canvas);
-        this.maxLights = 17; // Maximum number of lights supported
-        this.lightsBufferCache = null; // Cache for lights buffer instead of using gpuObjects
+        this.maxLights = 17;
+        this.lightsBufferCache = null;
     }
 
     async initialize() {
@@ -109,7 +109,7 @@ export class UnlitRenderer extends BaseRenderer {
         }
 
         const cameraUniformBuffer = this.device.createBuffer({
-            size: 144, // 128 for matrices + 16 for position (vec3 + padding)
+            size: 144,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -226,7 +226,6 @@ export class UnlitRenderer extends BaseRenderer {
         // obvezno poravnaj na 16 B
         const alignedSize = Math.ceil(totalBytes / 16) * 16;
 
-        // 16 bytes header + 3 lights * 80 bytes (5 * vec4f)
         const lightsUniformBuffer = this.device.createBuffer({
             size: alignedSize,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -278,7 +277,6 @@ export class UnlitRenderer extends BaseRenderer {
         this.device.queue.writeBuffer(cameraUniformBuffer, 128, cameraPosition);
         this.renderPass.setBindGroup(0, cameraBindGroup);
 
-        // Gather all lights in the scene
         const lightNodes = [];
         scene.traverse(node => {
             if (node.getComponentOfType(Light)) {
@@ -286,12 +284,9 @@ export class UnlitRenderer extends BaseRenderer {
             }
         });
 
-        // Prepare lights buffer
         const { lightsUniformBuffer, lightsBindGroup } = this.prepareLights();
 
         const numLights = Math.min(lightNodes.length, this.maxLights);
-
-        // Create buffer: 4 u32s (16 bytes) + 3 lights * 3 vec4f (144 bytes) = 160 bytes total
         const lightsData = new Float32Array(4 + this.maxLights * 20);
 
         const countView = new Uint32Array(lightsData.buffer, 0, 1);
@@ -304,32 +299,27 @@ export class UnlitRenderer extends BaseRenderer {
 
             const baseIndex = 4 + (i * 20);
 
-            // position
             lightsData[baseIndex + 0] = lightPosition[0];
             lightsData[baseIndex + 1] = lightPosition[1];
             lightsData[baseIndex + 2] = lightPosition[2];
             lightsData[baseIndex + 3] = 0;
 
-            // color
             lightsData[baseIndex + 4] = lightComponent.color[0];
             lightsData[baseIndex + 5] = lightComponent.color[1];
             lightsData[baseIndex + 6] = lightComponent.color[2];
             lightsData[baseIndex + 7] = 0;
 
-            // ambient
             lightsData[baseIndex + 8] = lightComponent.ambient[0];
             lightsData[baseIndex + 9] = lightComponent.ambient[1];
             lightsData[baseIndex + 10] = lightComponent.ambient[2];
             lightsData[baseIndex + 11] = 0;
 
 
-            // direction
             lightsData[baseIndex + 12] = lightComponent.direction[0];
             lightsData[baseIndex + 13] = lightComponent.direction[1];
             lightsData[baseIndex + 14] = lightComponent.direction[2];
             lightsData[baseIndex + 15] = 0;
 
-            // angles (cosines)
             lightsData[baseIndex + 16] = Math.cos(lightComponent.innerAngle);
             lightsData[baseIndex + 17] = Math.cos(lightComponent.outerAngle);
             lightsData[baseIndex + 18] = 0;
