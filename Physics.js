@@ -19,7 +19,7 @@ const abilityManager = new AbilityManager();
 
 export class Physics {
 
-    constructor(scene) {
+    constructor(scene, playerNode) {
         this.scene = scene;
         this.movingPlatforms = ['Platform1', 'Platform2', 'Platform3'];
         this.spinningDiamads = ['Diamond1', 'Diamond2', 'Diamond3', 'Diamond4',
@@ -29,16 +29,20 @@ export class Physics {
         ];
         this.platformData = new Map();
         this.lastPlayerY = null; //zadnji Y zato da se ne teleporiramo na block
+        this.platformTime = 0; //zato da se ne teleportirajo ko skocimo na gumb
 
         this.buttonStartY = null;   // začetna pozicija
         this.buttonMaxDrop = 0.8;   // koliko se lahko pogrezne
         this.buttonPressed = false;  // ali je trenutno spuščen
-        this.buttonActive = true;    // ali lahko gumb trenutno reagira
+        this.playerOnButton = false;
+        this.playerNode = playerNode
 
 
     }
 
     update(t, dt) {
+        this.playerOnButton = false;
+
         this.updateMovingPlatforms(t, dt); //premikanje platform, diamanti se ne premikajo z njimi
         this.updateRotateDiamands(t, dt);
 
@@ -63,6 +67,8 @@ export class Physics {
                 }
             }
         });
+
+        this.handleButtonRelease();
     }
 
     updateRotateDiamands(time, dt) {
@@ -92,9 +98,12 @@ export class Physics {
 
 
     updateMovingPlatforms(time, dt) {
+        if (this.buttonPressed) return;
+
+        this.platformTime += dt; //da se ne teleportira ob pritisku gumba
+
         const minX = -53;
         const maxX = 92;
-
         const center = (minX + maxX) / 2;
         const amplitude = (maxX - minX) / 2;
 
@@ -116,19 +125,14 @@ export class Physics {
             }
 
             const data = this.platformData.get(node);
-
             const speed = 0.35;
 
-            // shrani prej
             data.prevX = transform.translation[0];
 
-            // premik
             transform.translation[0] =
-                center + Math.sin(time * speed + data.phase) * amplitude;
+                center + Math.sin(this.platformTime * speed + data.phase) * amplitude;
         });
     }
-
-
 
 
 
@@ -166,8 +170,36 @@ export class Physics {
         return { min: newmin, max: newmax };
     }
 
-    resolveCollision(a, b) {
+    handleButtonRelease() {
+        if (this.playerOnButton) return;
+        if (!this.buttonPressed) return;
 
+        const button = this.scene.find(n => n.name === "Button.1");
+        if (!button) return;
+
+        const transform = button.getComponentOfType(Transform);
+        if (!transform) return;
+
+        const step = 0.05;
+        transform.translation[1] += step;
+
+        if (transform.translation[1] >= this.buttonStartY) {
+            transform.translation[1] = this.buttonStartY;
+            this.buttonPressed = false;
+        }
+    }
+
+    restart() {
+        const playerNode = this.playerNode;
+        if (!playerNode) return;
+
+        const transform = playerNode.getComponentOfType(Transform);
+        if (!transform) return;
+
+        transform.translation = [0, 0, 0];
+    }
+
+    resolveCollision(a, b) {
         // Get global space AABBs.
         const aBox = this.getTransformedAABB(a);
         const bBox = this.getTransformedAABB(b);
@@ -183,14 +215,17 @@ export class Physics {
         }
 
         if (b.name === "Cube.068") {
+            this.restart()
             console.log("GGs");
         }
 
+
         if (b.name === "Button.1") {
+            this.playerOnButton = true;
+
             const transform = b.getComponentOfType(Transform);
             if (!transform) return;
 
-            // Shrani začetno Y samo prvič
             if (this.buttonStartY === null) {
                 this.buttonStartY = transform.translation[1];
             }
@@ -198,25 +233,21 @@ export class Physics {
             const targetY = this.buttonStartY - this.buttonMaxDrop;
             const step = 0.05;
 
-            if (this.buttonActive && transform.translation[1] > targetY) {
-                // spust gumba
-                transform.translation[1] -= step;
+            // če je že do konca pritisnjen
+            if (this.buttonPressed) return;
 
-                if (transform.translation[1] <= targetY) {
-                    transform.translation[1] = targetY;
+            transform.translation[1] -= step;
 
-                    if (!this.buttonPressed) {
-                        this.buttonPressed = true;
-                        pressButton.currentTime = 0;
-                        pressButton.play();
-                        console.log("Button pressed");
+            if (transform.translation[1] <= targetY) {
+                transform.translation[1] = targetY;
+                this.buttonPressed = true;
 
-                        // gumb je zdaj “spuščen”
-                        this.buttonActive = false;
-                    }
-                }
+                pressButton.currentTime = 0;
+                pressButton.play();
             }
         }
+
+
 
         if (this.spinningDiamads.includes(b.name)) {
             console.log("Diamant dotaknjen");
@@ -225,8 +256,7 @@ export class Physics {
             if (index !== -1) this.spinningDiamads.splice(index, 1);
             const transform = b.getComponentOfType(Transform);
             if (transform) {
-                transform.translation[1] = -1000; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
-                transform.translation[0] = -1000; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
+                transform.translation[1] = -100; //diamand v bistu potisnemo v tla da ni vec viden (v resni ne)
             }
 
             collectSound.currentTime = 0;

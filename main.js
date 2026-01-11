@@ -33,8 +33,6 @@ if (!scene) {
     throw new Error('A default scene is required to run this example');
 }
 
-const physics = new Physics(scene);
-
 const camera = gltfLoader.loadNode('Camera');
 
 if (camera) {
@@ -67,6 +65,8 @@ playerNode.addComponent(new Transform({
     translation: [0, 0, 0],
     scale: [2, 2, 2],
 }))
+
+const physics = new Physics(scene, playerNode);
 
 playerNode.addComponent(new ThirdPersonController(playerNode, camera, canvas, physics, 3, abilityManager));
 scene.addChild(playerNode);
@@ -112,8 +112,8 @@ light.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
     color: [0.3, 0.3, 0.3],
     direction: [0, -1, 0],          // NAVZDOL
-    innerAngle: Math.PI / 4,        // ~30°
-    outerAngle: Math.PI / 4,
+    innerAngle: Math.PI / 2,        // ~30°
+    outerAngle: Math.PI / 2,
 }));
 
 const light2 = new Node();
