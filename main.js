@@ -94,7 +94,7 @@ diamonds.forEach(diamond => {
     });
 
     diamondNode.addComponent(new Light({
-        color: [0.2, 0.2, 2.0],
+        color: [0.2, 0.3, 1],
         ambient: [1.0, 1.0, 1.0],
         direction: [0, 0, 0],
         innerAngle: 0,
@@ -110,10 +110,10 @@ light.addComponent(new Transform({
 }));
 light.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
-    color: [0.3, 0.3, 0.3],
+    color: [0.3, 0.5, 0.3],
     direction: [0, -1, 0],          // NAVZDOL
-    innerAngle: Math.PI / 2,        // ~30°
-    outerAngle: Math.PI / 2,
+    innerAngle: Math.PI / 4,        // ~30°
+    outerAngle: Math.PI / 4,
 }));
 
 const light2 = new Node();
@@ -136,10 +136,10 @@ light3.addComponent(new Transform({
 }));
 light3.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
-    color: [0.3, 0.3, 0.3],
+    color: [0.5, 0.5, 0.5],
     direction: [0, -1, 0],          // NAVZDOL
-    innerAngle: Math.PI / 4,        // ~30°
-    outerAngle: Math.PI / 4,
+    innerAngle: Math.PI / 2,        // ~30°
+    outerAngle: Math.PI / 2,
 }));
 
 const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077']; //popravljeno igrnorira piramide
