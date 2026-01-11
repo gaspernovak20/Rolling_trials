@@ -1,22 +1,25 @@
 export class KeyOverlay {
-
-    constructor(parent = document.body, abilityManager) {
+    constructor(parent = document.body, abilityManager = null) {
         this.keys = ['W', 'A', 'S', 'D', 'E', ' '];
         this.abilityList = [
-            '2x Gravity',
-            '2x Jump',
-            '3x Gravity',
-            '3x Jump',
-            '2x Top speed',
-            'Normal'
+            '2x Gravity', '2x Jump', '3x Gravity', '3x Jump', '2x Top speed', 'Normal'
         ];
 
         this.abilityManager = abilityManager;
-
         this.keyElements = {};
         this.parent = parent;
 
-        // ----- Overlay za tipke -----
+        this.diamondsCollected = 0;
+        this.currentAbility = null;
+
+        this.initOverlay();
+        this.initAbilityOverlay();
+        this.initDiamondCounter();
+        this.addGlobalEventListeners();
+        this.addStyles();
+    }
+
+    initOverlay() {
         this.overlay = document.createElement('div');
         this.overlay.id = 'keyOverlay';
         this.overlay.style.position = 'fixed';
@@ -29,32 +32,28 @@ export class KeyOverlay {
         this.overlay.style.fontFamily = 'sans-serif';
         this.overlay.style.userSelect = 'none';
         this.overlay.style.zIndex = '100';
-        parent.appendChild(this.overlay);
+        this.parent.appendChild(this.overlay);
 
-        // ----- W in E vrstica -----
         const topRow = document.createElement('div');
         topRow.style.display = 'flex';
         topRow.style.gap = '10px';
-        const keyW = this.createKey('W');
-        topRow.appendChild(keyW);
-        const keyE = this.createKey('E');
-        topRow.appendChild(keyE);
+        topRow.appendChild(this.createKey('W'));
+        topRow.appendChild(this.createKey('E'));
         this.overlay.appendChild(topRow);
 
-        // ----- A S D vrstica -----
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.gap = '10px';
-        ['A','S','D'].forEach(k => row.appendChild(this.createKey(k)));
-        this.overlay.appendChild(row);
+        const midRow = document.createElement('div');
+        midRow.style.display = 'flex';
+        midRow.style.gap = '10px';
+        ['A', 'S', 'D'].forEach(k => midRow.appendChild(this.createKey(k)));
+        this.overlay.appendChild(midRow);
 
-        // ----- SPACE tipka -----
         const keySpace = this.createKey(' ');
         keySpace.textContent = 'SPACE';
         keySpace.style.width = '160px';
         this.overlay.appendChild(keySpace);
+    }
 
-        // ----- Ability overlay (zgornji desni kot) -----
+    initAbilityOverlay() {
         this.abilityOverlay = document.createElement('div');
         this.abilityOverlay.id = 'abilityOverlay';
         this.abilityOverlay.style.position = 'fixed';
@@ -69,11 +68,10 @@ export class KeyOverlay {
         this.abilityOverlay.style.display = 'none'; // sprva skrito
         this.abilityOverlay.style.fontWeight = 'bold';
         this.abilityOverlay.style.transition = 'background 0.3s';
-        parent.appendChild(this.abilityOverlay);
+        this.parent.appendChild(this.abilityOverlay);
+    }
 
-        this.currentAbility = null; // trenutno prikazan ability
-
-        // ----- Diamond Counter (zgornji levi kot) -----
+    initDiamondCounter() {
         this.diamondCounter = document.createElement('div');
         this.diamondCounter.id = 'diamondCounter';
         this.diamondCounter.style.position = 'fixed';
@@ -83,24 +81,96 @@ export class KeyOverlay {
         this.diamondCounter.style.fontSize = '24px';
         this.diamondCounter.style.color = '#fff';
         this.diamondCounter.style.zIndex = '100';
-        this.diamondCounter.style.background = '#333';
+        this.diamondCounter.style.background = 'transparent';
         this.diamondCounter.style.padding = '10px 15px';
         this.diamondCounter.style.borderRadius = '8px';
         this.diamondCounter.style.fontWeight = 'bold';
-        this.diamondCounter.style.background = 'transparent';
-        this.diamondCounter.style.transition = 'background 0.3s';
+        this.diamondCounter.textContent = '0 / 14 💎';
+        this.parent.appendChild(this.diamondCounter);
+    }
 
-        parent.appendChild(this.diamondCounter);
+    createKey(k) {
+        const el = document.createElement('div');
+        el.className = 'key';
+        el.id = k === ' ' ? 'keySpace' : 'key' + k;
+        el.textContent = k === ' ' ? 'SPACE' : k;
+        this.keyElements[k] = el;
+        return el;
+    }
 
-        this.diamondsCollected = 0; // števec diamantov
+    addGlobalEventListeners() {
+        window.addEventListener('keydown', (e) => this.onKeyDown(e));
+        window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
-        // ----- Zvoki -----
         this.spinSound = new Audio(new URL('../../sounds/spin.mp3', import.meta.url));
         this.spinSound.volume = 0.7;
         this.selectSound = new Audio(new URL('../../sounds/select.mp3', import.meta.url));
         this.selectSound.volume = 0.8;
+    }
 
-        // ----- Dodamo CSS za tipke -----
+    onKeyDown(e) {
+        const key = e.key.toUpperCase();
+        if (this.keyElements[key]) this.keyElements[key].classList.add('active');
+        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.add('active');
+
+        if (key === 'E') this.toggleAbility();
+    }
+
+    onKeyUp(e) {
+        const key = e.key.toUpperCase();
+        if (this.keyElements[key]) this.keyElements[key].classList.remove('active');
+        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.remove('active');
+    }
+
+    toggleAbility() {
+        clearInterval(this.abilityInterval); 
+        clearTimeout(this.abilityTimeout);
+
+        if (this.currentAbility) {
+            this.abilityOverlay.style.display = 'none';
+            this.currentAbility = null;
+            return;
+        }
+
+        this.abilityOverlay.style.display = 'block';
+        let index = 0;
+        const spinCount = 35;
+
+        this.spinSound.currentTime = 0;
+        this.spinSound.play();
+
+        this.abilityInterval = setInterval(() => {
+            this.abilityOverlay.textContent = this.abilityList[index];
+            index = (index + 1) % this.abilityList.length;
+        }, 100);
+
+        this.abilityTimeout = setTimeout(() => {
+            clearInterval(this.abilityInterval);
+            this.abilityInterval = null;
+
+            const finalAbility = this.abilityList[Math.floor(Math.random() * this.abilityList.length)];
+            this.currentAbility = finalAbility;
+            this.abilityOverlay.textContent = finalAbility;
+
+            this.selectSound.currentTime = 0;
+            this.selectSound.play();
+
+            // Flash background
+            this.abilityOverlay.style.background = '#FFD700';
+            setTimeout(() => this.abilityOverlay.style.background = '#333', 500);
+
+            this.abilityManager?.setAbility(finalAbility);
+            this.abilityTimeout = null;
+        }, spinCount * 100);
+    }
+
+
+    addDiamond() {
+        this.diamondsCollected++;
+        this.diamondCounter.textContent = `${this.diamondsCollected} / 14 💎`;
+    }
+
+    addStyles() {
         const style = document.createElement('style');
         style.textContent = `
             .key {
@@ -121,95 +191,5 @@ export class KeyOverlay {
             }
         `;
         document.head.appendChild(style);
-
-        // ----- Event listenerji -----
-        window.addEventListener('keydown', (e) => this.onKeyDown(e));
-        window.addEventListener('keyup', (e) => this.onKeyUp(e));
-
-        console.trace('KeyOverlay created');
-    }
-
-    createKey(k) {
-        const el = document.createElement('div');
-        el.className = 'key';
-        el.id = k === ' ' ? 'keySpace' : 'key' + k;
-        el.textContent = k === ' ' ? 'SPACE' : k;
-        this.keyElements[k] = el;
-        return el;
-    }
-
-    onKeyDown(e) {
-        const key = e.key.toUpperCase();
-        if (this.keyElements[key]) this.keyElements[key].classList.add('active');
-        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.add('active');
-
-        // Če je pritisnjen E, pokaži ali skrij naključni ability
-        if (key === 'E') this.toggleAbility();
-    }
-
-    onKeyUp(e) {
-        const key = e.key.toUpperCase();
-        if (this.keyElements[key]) this.keyElements[key].classList.remove('active');
-        if (key === ' ' && this.keyElements[' ']) this.keyElements[' '].classList.remove('active');
-    }
-
-    toggleAbility() {
-    // Če je animacija že v teku, jo prekini
-    if (this.abilityInterval) {
-        clearInterval(this.abilityInterval);
-        this.abilityInterval = null;
-    }
-    if (this.abilityTimeout) {
-        clearTimeout(this.abilityTimeout);
-        this.abilityTimeout = null;
-    }
-
-    if (this.currentAbility) {
-        this.abilityOverlay.style.display = 'none';
-        this.currentAbility = null;
-    } else {
-        this.abilityOverlay.style.display = 'block';
-
-        const spinCount = 35;
-        let currentIndex = 0;
-        this.spinSound.currentTime = 0;
-        this.spinSound.play();
-
-        this.abilityInterval = setInterval(() => {
-            this.abilityOverlay.textContent = this.abilityList[currentIndex];
-            currentIndex = (currentIndex + 1) % this.abilityList.length;
-        }, 100);
-
-        this.abilityTimeout = setTimeout(() => {
-            clearInterval(this.abilityInterval);
-            this.abilityInterval = null;
-
-            const finalIndex = Math.floor(Math.random() * this.abilityList.length);
-            const finalAbility = this.abilityList[finalIndex];
-            this.currentAbility = finalAbility;
-            this.abilityOverlay.textContent = finalAbility;
-
-            this.selectSound.currentTime = 0;
-            this.selectSound.play();
-
-            this.abilityOverlay.style.background = '#FFD700';
-            setTimeout(() => {
-                this.abilityOverlay.style.background = '#333';
-            }, 500);
-
-            if (this.abilityManager) {
-                this.abilityManager.setAbility(finalAbility);
-            }
-
-            this.abilityTimeout = null;
-        }, spinCount * 100);
-    }
-}
-
-
-    addDiamond() {
-        this.diamondCounter.style.background = '#333';
-        this.diamondsCollected++;
-        this.diamondCounter.textContent = `${this.diamondsCollected} / 14 💎`;
     }
 }

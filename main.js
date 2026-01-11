@@ -16,6 +16,15 @@ import { Primitive } from './engine/core.js';
 import { KeyOverlay } from './keys.js';
 import { AbilityManager } from './AbilityManager.js';
 
+const overlay = document.getElementById('overlay');
+const playButton = document.getElementById('playButton');
+
+let gameStarted = false;
+
+playButton.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    gameStarted = true;
+});
 
 const canvas = document.querySelector('canvas');
 const renderer = new UnlitRenderer(canvas);
@@ -140,10 +149,10 @@ light3.addComponent(new Transform({
 }));
 light3.addComponent(new Light({
     ambient: [0.8, 0.8, 0.8],
-    color: [0.3, 0.3, 0.3],
+    color: [0.3, 0.1, 0.1],
     direction: [0, -1, 0],          // NAVZDOL
-    innerAngle: Math.PI / 2,        // ~30°
-    outerAngle: Math.PI / 2,
+    innerAngle: Math.PI / 3,        // ~30°
+    outerAngle: Math.PI / 3,
 }));
 
 const ignoreNodes = ['Cube.059', 'Cube.060', 'Cube.061', 'Cube.062', 'Cube.063', 'Cube.079', 'Cube.0.80', 'Cube.078', 'Cube.077']; //popravljeno igrnorira piramide

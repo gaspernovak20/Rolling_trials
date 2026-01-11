@@ -125,7 +125,7 @@ export class Physics {
             }
 
             const data = this.platformData.get(node);
-            const speed = 0.35;
+            const speed = 0.5;
 
             data.prevX = transform.translation[0];
 
