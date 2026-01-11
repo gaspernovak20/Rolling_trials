@@ -196,7 +196,7 @@ export class Physics {
         const transform = playerNode.getComponentOfType(Transform);
         if (!transform) return;
 
-        transform.translation = [0, 0, 0];
+        transform.translation = [0, 0, -40];
     }
 
     resolveCollision(a, b) {

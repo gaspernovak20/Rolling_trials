@@ -71,6 +71,9 @@ const physics = new Physics(scene, playerNode);
 playerNode.addComponent(new ThirdPersonController(playerNode, camera, canvas, physics, 3, abilityManager));
 scene.addChild(playerNode);
 
+const transform = playerNode.getComponentOfType(Transform);
+transform.translation = [0, 0, -40];
+
 scene.traverse(node => {
     if (node.getComponentOfType(Model) && !node.isDynamic) {
         node.isStatic = true;
