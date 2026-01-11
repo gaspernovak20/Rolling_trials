@@ -214,7 +214,7 @@ export class Physics {
             console.log("Win!");
         }
 
-        if (b.name === "Cube.068") {
+        if (b.name === "Cube.068" && a.name === "ball") {
             this.restart()
             console.log("GGs");
         }
