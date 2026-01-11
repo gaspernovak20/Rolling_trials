@@ -6,7 +6,7 @@ import { UnlitRenderer } from 'engine/renderers/UnlitRenderer.js';
 import { TouchController } from 'engine/controllers/TouchController.js';
 import { FirstPersonController } from 'engine/controllers/FirstPersonController.js';
 import { ThirdPersonController } from 'engine/controllers/ThirdPersonController.js';
-import { Physics } from './examples/05-collision/01-aabb-aabb/Physics.js';
+import { Physics } from '/Physics.js';
 import {
     calculateAxisAlignedBoundingBox,
     mergeAxisAlignedBoundingBoxes,
@@ -26,7 +26,7 @@ await gltfLoader.load(new URL('./level4/level4.gltf', import.meta.url));
 // await gltfLoader.load(new URL('./models/scene/scene.gltf', import.meta.url));
 
 const abilityManager = new AbilityManager();
-const keyOverlay = new KeyOverlay(document.body, abilityManager);
+window.keyOverlay = new KeyOverlay(document.body, abilityManager);
 
 const scene = gltfLoader.loadScene(gltfLoader.defaultScene);
 if (!scene) {
@@ -86,20 +86,20 @@ camera.isDynamic = true;
 const light = new Node();
 scene.addChild(light);
 light.addComponent(new Transform({
-    translation: [9.990065574645996, 253.85763549804688, -175.3096466064453],
+    translation: [9.990065574645996, 100, -175.3096466064453],
 }));
 light.addComponent(new Light({
-    ambient: [0.3, 0.3, 0.3],
+    ambient: [0.6, 0.6, 0.6],
     color: [1, 1, 1],
 }));
 
 const light2 = new Node();
 scene.addChild(light2);
 light2.addComponent(new Transform({
-    translation: [9.901371955871582, 253.85763549804688, -499.8734436035156],
+    translation: [9.901371955871582, 150, -499.8734436035156],
 }));
 light2.addComponent(new Light({
-    ambient: [0.3, 0.3, 0.3],
+    ambient: [0.5, 0.5, 0.5],
     color: [1, 1, 1],
 }));
 
@@ -107,11 +107,11 @@ const light3 = new Node();
 scene.addChild(light3);
 light3.addComponent(new Transform({
     translation: [2.3474042415618896,
-				253.85763549804688,
+				200,
 				-900.2090454101562],
 }));
 light3.addComponent(new Light({
-    ambient: [0.3, 0.3, 0.3],
+    ambient: [0.5, 0.5, 0.5],
     color: [1, 1, 1],
 }));
 
@@ -136,7 +136,6 @@ scene.traverse(node => {
 const { min, max } = physics.getTransformedAABB(playerNode);
 const radius = (max[1] - min[1]) / 2;
 playerNode.radius = radius;
-console.log(playerNode.radius);
 
 function update(time, dt) {
     scene.traverse(node => {

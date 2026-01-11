@@ -17,26 +17,26 @@ export class AbilityManager {
 
         switch (name) {
             case '2x Gravity':
-                this.gravityMult = 2;
+                this.gravityMult = 1.1;
                 break;
 
             case '3x Gravity':
-                this.gravityMult = 3;
+                this.gravityMult = 1.138;
                 break;
 
             case '2x Jump':
-                this.jumpMult = 2;
+                this.jumpMult = 1.1;
                 break;
 
             case '3x Jump':
-                this.jumpMult = 3;
-                break;
-
-            case '10x Acceleration':
-                this.accelerationMult = 1000;
+                this.jumpMult = 1.2;
                 break;
             case '2x Top speed':
                 this.topSpeedMult = 80;
+                this.accelerationMult = 1000;
+                break;
+            case 'Normal':
+                this.reset()
                 break;
         }
     

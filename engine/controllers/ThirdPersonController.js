@@ -21,7 +21,7 @@ export class ThirdPersonController {
         decay = 0.99999,
         pointerSensitivity = 0.002,
 
-        jumpSpeed = 70,
+        jumpSpeed = 67,
         gravity = -100,
         groundY = 0.5,
         isGrounded = true,
@@ -29,7 +29,6 @@ export class ThirdPersonController {
         baseOffset = [0, 25, 30],
         radius = vec3.len(baseOffset),
     } = {}) {
-        console.log('AbilityManager in controller:', abilityManager);
         this.playerNode = playerNode;
         this.cameraNode = cameraNode;
         this.domElement = domElement;

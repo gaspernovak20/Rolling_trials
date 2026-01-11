@@ -24,6 +24,7 @@ struct FragmentOutput {
 struct CameraUniforms {
     viewMatrix: mat4x4f,
     projectionMatrix: mat4x4f,
+    position: vec3f,
 }
 
 struct ModelUniforms {
@@ -36,9 +37,9 @@ struct MaterialUniforms {
 }
 
 struct LightData {
-    position: vec4f,  // vec3 + padding
-    color: vec4f,     // vec3 + padding
-    ambient: vec4f,   // vec3 + padding
+    position: vec4f,
+    color: vec4f,
+    ambient: vec4f,
 }
 
 struct LightsUniforms {
@@ -76,28 +77,36 @@ fn fragment(input: FragmentInput) -> FragmentOutput {
     var output: FragmentOutput;
 
     let N = normalize(input.normal);
-    let V = normalize(-input.position);
+    let V = normalize(camera.position - input.position);
 
     var color: vec3f = vec3f(0.0, 0.0, 0.0);
 
-    // Loop through all active lights
+    // Add ambient from first light only (to avoid over-brightening)
+    if (lightsData.count > 0u) {
+        color = color + lightsData.lights[0].ambient.xyz * 0.3; // Reduced ambient contribution
+    }
+
+    // Loop through all active lights for diffuse and specular
     for (var i: u32 = 0u; i < lightsData.count; i++) {
         let light = lightsData.lights[i];
 
-        // Ambient (only from first light)
-        if (i == 0u) {
-            color = color + light.ambient.xyz;
-        }
+        // Calculate distance and attenuation
+        let lightDir = light.position.xyz - input.position;
+        let distance = length(lightDir);
+        let L = normalize(lightDir);
+        
+        // Very weak attenuation for distant ceiling lights
+        // Increased light intensity with a multiplier
+        let attenuation = 1.3 / (1.0 + 0.0005 * distance + 0.00001 * distance * distance);
 
         // Diffuse (Lambert)
-        let L = normalize(light.position.xyz - input.position);
         let diff = max(dot(N, L), 0.0);
-        color = color + diff * light.color.xyz;
+        color = color + diff * light.color.xyz * attenuation;
 
-        // Specular (Blinn-Phong)
+        // Specular (Blinn-Phong) - reduced for less shiny surfaces
         let H = normalize(L + V);
-        let spec = pow(max(dot(N, H), 0.0), 20.0);
-        color = color + spec * light.color.xyz;
+        let spec = pow(max(dot(N, H), 0.0), 16.0);
+        color = color + spec * light.color.xyz * attenuation * 0.2;
     }
 
     // Sample texture

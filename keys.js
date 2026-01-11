@@ -7,8 +7,8 @@ export class KeyOverlay {
             '2x Jump',
             '3x Gravity',
             '3x Jump',
-            '10x Acceleration',
-            '2x Top speed'
+            '2x Top speed',
+            'Normal'
         ];
 
         this.abilityManager = abilityManager;
@@ -125,6 +125,8 @@ export class KeyOverlay {
         // ----- Event listenerji -----
         window.addEventListener('keydown', (e) => this.onKeyDown(e));
         window.addEventListener('keyup', (e) => this.onKeyUp(e));
+
+        console.trace('KeyOverlay created');
     }
 
     createKey(k) {

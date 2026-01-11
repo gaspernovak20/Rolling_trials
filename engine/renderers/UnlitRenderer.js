@@ -109,7 +109,7 @@ export class UnlitRenderer extends BaseRenderer {
         }
 
         const cameraUniformBuffer = this.device.createBuffer({
-            size: 128,
+            size: 144, // 128 for matrices + 16 for position (vec3 + padding)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -254,9 +254,11 @@ export class UnlitRenderer extends BaseRenderer {
         const cameraComponent = camera.getComponentOfType(Camera);
         const viewMatrix = getGlobalViewMatrix(camera);
         const projectionMatrix = getProjectionMatrix(camera);
+        const cameraPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(camera));
         const { cameraUniformBuffer, cameraBindGroup } = this.prepareCamera(cameraComponent);
         this.device.queue.writeBuffer(cameraUniformBuffer, 0, viewMatrix);
         this.device.queue.writeBuffer(cameraUniformBuffer, 64, projectionMatrix);
+        this.device.queue.writeBuffer(cameraUniformBuffer, 128, cameraPosition);
         this.renderPass.setBindGroup(0, cameraBindGroup);
 
         // Gather all lights in the scene
@@ -284,6 +286,8 @@ export class UnlitRenderer extends BaseRenderer {
             const lightNode = lightNodes[i];
             const lightComponent = lightNode.getComponentOfType(Light);
             const lightPosition = mat4.getTranslation(vec3.create(), getGlobalModelMatrix(lightNode));
+            
+            
             
             const baseIndex = 4 + (i * 12); // Start at index 4, each light is 12 floats (3 vec4f)
             
